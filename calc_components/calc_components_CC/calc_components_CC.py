@@ -476,28 +476,60 @@ i_h = 1 # index corresponding to 2005 - 2014
 
 #compare 2020, 2030, 2040
 
-#2020
-p_inlist = [pop_ratio_list[i_h], pop_ratio_list[3]]
-m_inlist = [dmor_2010, mor_list_fut[0]]
-e_inlist = [his_years[i_h], ssp119_years[0]]
+scen_list = [ssp119_years, ssp245_years, ssp585_years]
 
-p_effect, m_effect, e_effect, plist, mlist, elist = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
+#2020
+p_outlist = []
+m_outlist = []
+e_outlist = []
+
+for i in np.arange(len(scen_list)):
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[3]]
+    m_inlist = [dmor_2010, mor_list_fut[0]]
+    e_inlist = [his_years[i_h], scen_list[i][0]]
+
+    p_effect, m_effect, e_effect = calc_comp(p_inlist, m_inlist, e_inlist, return_list = False)
+    
+    p_outlist.append(p_effect)
+    m_outlist.append(m_effect)
+    e_outlist.append(e_effect)
+
+
+
 
 #2030
-p_inlist = [pop_ratio_list[i_h], pop_ratio_list[4]]
-m_inlist = [dmor_2010, mor_list_fut[1]]
-e_inlist = [his_years[i_h], ssp119_years[1]]
 
-p_effect3, m_effect3, e_effect3, plist3, mlist3, elist3 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
-  
+p_outlist3 = []
+m_outlist3 = []
+e_outlist3 = []
+
+for i in np.arange(len(scen_list)):
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[4]]
+    m_inlist = [dmor_2010, mor_list_fut[1]]
+    e_inlist = [his_years[i_h], scen_list[i][1]]
+
+    p_effect, m_effect, e_effect = calc_comp(p_inlist, m_inlist, e_inlist, return_list = False)
+    
+    p_outlist3.append(p_effect)
+    m_outlist3.append(m_effect)
+    e_outlist3.append(e_effect)
+
 #2040
 
-p_inlist = [pop_ratio_list[i_h], pop_ratio_list[5]]
-m_inlist = [dmor_2010, mor_list_fut[2]]
-e_inlist = [his_years[i_h], ssp119_years[2]]
+p_outlist4 = []
+m_outlist4 = []
+e_outlist4 = []
 
-p_effect4, m_effect4, e_effect4, plist4, mlist4, elist4 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
-  
+for i in np.arange(len(scen_list)):
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[5]]
+    m_inlist = [dmor_2010, mor_list_fut[2]]
+    e_inlist = [his_years[i_h], scen_list[i][2]]
+
+    p_effect, m_effect, e_effect = calc_comp(p_inlist, m_inlist, e_inlist, return_list = False)
+    
+    p_outlist4.append(p_effect)
+    m_outlist4.append(m_effect)
+    e_outlist4.append(e_effect)
 
 
 #%% Check values
@@ -508,6 +540,16 @@ base_period = his_mor_years[i_h]
 fperiod = ssp119_mor_years[0]
 fperiod3 = ssp119_mor_years[1]
 fperiod4 = ssp119_mor_years[2]
+
+#245
+fperiod = ssp245_mor_years[0]
+fperiod3 = ssp245_mor_years[1]
+fperiod4 = ssp245_mor_years[2]
+
+#585
+fperiod = ssp585_mor_years[0]
+fperiod3 = ssp585_mor_years[1]
+fperiod4 = ssp585_mor_years[2]
 
 dif, dif_per = find_dif(base_period, fperiod)
 dif3, dif_per3 = find_dif(base_period, fperiod3)
@@ -526,6 +568,26 @@ fperiod3_ens = ens_mean(fperiod3)
 fperiod4_ens = ens_mean(fperiod4)
 
 
+#
+base_period = his_mor_years[i_h]
+scen_list = [ssp119_mor_years, ssp245_mor_years, ssp585_mor_years]
+ens_dif_list = []
+ens_dif3_list = []
+ens_dif4_list = []
+for i in np.arange(len(scen_list)):
+    
+    fperiod = scen_list[i][0]
+    fperiod3 = scen_list[i][1]
+    fperiod4 = scen_list[i][2]
+
+    
+    dif, dif_per = find_dif(base_period, fperiod)
+    dif3, dif_per3 = find_dif(base_period, fperiod3)
+    dif4, dif_per4 = find_dif(base_period, fperiod4)
+    
+    ens_dif_list.append(ens_mean(dif))
+    ens_dif3_list.append(ens_mean(dif3))
+    ens_dif4_list.append(ens_mean(dif4))
 
 
 #%% Check decomp
@@ -534,106 +596,97 @@ print(np.nanmean(bperiod_ens.data))
 print(np.nanmean(fperiod_ens.data))
 print(np.nanmean(ens_dif.data))
 
-np.nanmean(p_effect.data)
-np.nanmean(m_effect.data)
-np.nanmean(e_effect.data)
+np.nanmean(p_outlist[0].data)
+np.nanmean(m_outlist[0].data)
+np.nanmean(e_outlist[0].data)
 
-np.nanmean(p_effect.data) +  np.nanmean(m_effect.data) +   np.nanmean(e_effect.data) 
+np.nanmean(p_outlist[0].data) +  np.nanmean(m_outlist[0].data) +   np.nanmean(e_outlist[0].data) 
 
+#245
+print(np.nanmean(ens_dif.data))
+np.nanmean(p_outlist[1].data) +  np.nanmean(m_outlist[1].data) +   np.nanmean(e_outlist[1].data) 
+
+#585
+print(np.nanmean(ens_dif3.data))
+np.nanmean(p_outlist3[2].data) +  np.nanmean(m_outlist3[2].data) +   np.nanmean(e_outlist3[2].data) 
 
 
 #%% What percentage of the change is due to climate, pop and mortality?
 
-def cube_to_frame(p_effect_list, m_effect_list, e_effect_list, total_dif, period, coeff):
+def cube_to_frame(p_effect_list, m_effect_list, e_effect_list, total_dif, period):
     
-    df = pd.DataFrame(columns = ['model', 'scen', 'period', 'coeff', 'p', 'm', 'e', 'p_per', 'm_per', 'e_per', 'total'])
+    df = pd.DataFrame(columns = ['scen', 'period', 'p', 'm', 'e', 'p_per', 'm_per', 'e_per', 'total'])
 
     scens = np.unique([x.coord('sim').points[0] for x in p_effect_list])
     
     for s in scens:
-        p_effect_list_s = [x for x in p_effect_list if x.coord('sim').points[0] == s]
-        m_effect_list_s = [x for x in m_effect_list if x.coord('sim').points[0] == s]
-        e_effect_list_s = [x for x in e_effect_list if x.coord('sim').points[0] == s]
-        total_dif_s = [x for x in total_dif if x.coord('sim').points[0] == s]
-
-        for i in np.arange(len(p_effect_list_s)):
-            p = p_effect_list_s[i]
-            gcm = tp.gcm(p)
-            
-            m = [x for x in m_effect_list_s if x.coord('ens').points[0] == gcm][0]
-            e = [x for x in e_effect_list_s if x.coord('ens').points[0] == gcm][0]
-            d = [x for x in total_dif_s if x.coord('ens').points[0] == gcm][0]
-            
-                        
-            p_val =  np.nansum(p.data)
-            m_val =  np.nansum(m.data)
-            e_val =  np.nansum(e.data)
-            d_val =  np.nansum(d.data)
-            
-            p_per = p_val / d_val * 100
-            m_per = m_val / d_val * 100
-            e_per = e_val / d_val * 100
+        p = [x for x in p_effect_list if x.coord('sim').points[0] == s][0]
+        m = [x for x in m_effect_list if x.coord('sim').points[0] == s][0]
+        e = [x for x in e_effect_list if x.coord('sim').points[0] == s][0]
+        d = [x for x in total_dif if x.coord('sim').points[0] == s][0]
+                       
+        p_val =  np.nansum(p.data)
+        m_val =  np.nansum(m.data)
+        e_val =  np.nansum(e.data)
+        d_val =  np.nansum(d.data)
         
-                
-            y = pd.DataFrame(data = {'model': gcm,
-                                     'scen': s,
-                                     'period': period,
-                                     'coeff': coeff,
-                                     'p': p_val,
-                                     'm': m_val,
-                                     'e': e_val,
-                                     'p_per': p_per,
-                                     'm_per': m_per,
-                                     'e_per': e_per,
-                                     'total': p_per + m_per + e_per}, index = [0])
+        p_per = p_val / d_val * 100
+        m_per = m_val / d_val * 100
+        e_per = e_val / d_val * 100
     
             
-            df = df.append(y)
+        y = pd.DataFrame(data = {'scen': s,
+                                 'period': period,
+                                 'p': p_val,
+                                 'm': m_val,
+                                 'e': e_val,
+                                 'p_per': p_per,
+                                 'm_per': m_per,
+                                 'e_per': e_per,
+                                 'total': p_per + m_per + e_per}, index = [0])
+
+        
+        df = df.append(y)
     
     return df
 
 
-df_p = cube_to_frame(plist, mlist, elist, dif, '2020s', '0.61')
-df_p3 = cube_to_frame(plist3, mlist3, elist3, dif3, '2030s', '0.61')
-df_p4 = cube_to_frame(plist4, mlist4, elist4, dif4, '2040s', '0.61')
-
-df_p1 = cube_to_frame(plist1, mlist1, elist1, dif1, '2020s', '1.0')
-df_p31 = cube_to_frame(plist31, mlist31, elist31, dif31, '2030s', '1.0')
-df_p41 = cube_to_frame(plist41, mlist41, elist41, dif41, '2040s', '1.0')
+df_p = cube_to_frame(p_outlist, m_outlist, e_outlist, ens_dif_list, '2020s')
+df_p3 = cube_to_frame(p_outlist3, m_outlist3, e_outlist3, ens_dif3_list,'2030s')
+df_p4 = cube_to_frame(p_outlist4, m_outlist4, e_outlist4, ens_dif4_list, '2040s')
 
 
-df_p = df_p.append(df_p1)
-df_p3 = df_p3.append(df_p31)
-df_p4 = df_p4.append(df_p41)
+df_p = df_p.append(df_p3)
+df_p = df_p.append(df_p4)
+#df_p.set_index('period', inplace=  True)
 
-df = df_p.append(df_p3)
-df = df.append(df_p4)
+df_per = df_p.drop(columns = ['p' , 'm', 'e', 'total'])
 
-
-df_agg = df.groupby(['scen', 'period', 'coeff'], as_index = True).mean()
-
-
-df_per = df_agg.drop(columns = ['p' , 'm', 'e', 'total'])
-
-df_abs = df_agg.drop(columns = ['p_per' , 'm_per', 'e_per', 'total'])
+df_abs = df_p.drop(columns = ['p_per' , 'm_per', 'e_per', 'total'])
 
 #otherwise looks like population growth makes mortlaity go down
-df_abs = df_abs * -1
+df_abs['p'] = df_abs['p'] * -1
+df_abs['m'] = df_abs['m'] * -1
+df_abs['e'] = df_abs['e'] * -1
 
-print(df_agg.iloc[df_agg.index.get_level_values('coeff') == '0.61'])
+#load historical
+
+d_abs = pd.read_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/d_abs.csv')
+h_abs = pd.read_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/h_abs.csv')
 
 #%% https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars-with-python-pandas
 
-def plot_clustered_stacked(dfall, cols, labels=None, title="",  H="/", width = 0.5, z = 1, **kwargs):
+def plot_clustered_stacked(dfall, cols, labels=None, title="",  H=['', "/", '.'], width = 0.25, z = 1, **kwargs):
     """Given a list of dataframes, with identical columns and index, create a clustered stacked bar plot. 
 labels is a list of the names of the dataframe, used for the legend
 title is a string for the title of the plot
 H is the hatch used for identification of the different dataframe"""
 
-    n_df = len(dfall)
-    n_col = len(dfall[0].columns) 
-    n_ind = len(dfall[0].index)
-    axe = plt.subplot(1,2, z)
+    n_df = len(dfall) # number of dfs
+    n_col = len(dfall[0].columns) #columns
+    n_ind = len(dfall[0].index) #index - groups 
+    axe = plt.subplot(1,1, z)
+    # x = subplot number
 
     for df in dfall : # for each data frame
         axe = df.plot(kind="bar",
@@ -648,43 +701,32 @@ H is the hatch used for identification of the different dataframe"""
     h,l = axe.get_legend_handles_labels() # get the handles we want to modify
     for i in range(0, n_df * n_col, n_col): # len(h) = n_col * n_df
         for j, pa in enumerate(h[i:i+n_col]):
-            for rect in pa.patches: # for each index
+           for rect in pa.patches: # for each index
                 rect.set_x(rect.get_x() + width / float(n_df + width) * i / float(n_col))
-                rect.set_hatch(H * int(i / n_col)) #edited part     
+                rect.set_hatch(H[int(i / n_col)]) #edited part     
                 rect.set_width(width / float(n_df + width))
 
     axe.set_xticks(np.arange(n_ind))
     axe.set_xticklabels(df.index, rotation = 0)
-    #axe.set_title(title)
 
-    # Add invisible data to add another legend
-    #n=[]        
-    #for i in range(n_df):
-    #    n.append(axe.bar(0, 0, color="gray", hatch=H * i))
-
-    #l1 = axe.legend(h[:n_col], l[:n_col], loc=[1.01, 0.5])
-    #if labels is not None:
-     #   l2 = plt.legend(n, labels, loc=[1.01, 0.1]) 
-    #axe.add_artist(l1)
     return axe
 
 
 #%% Plot absoltue mortality
     
-h_abs_low = h_abs.iloc[h_abs.index.get_level_values('coeff') == '0.61']
-h_abs_high = h_abs.iloc[h_abs.index.get_level_values('coeff') == '1.0']
-d_abs_low = d_abs.iloc[d_abs.index.get_level_values('coeff') == '0.61']
-d_abs_high = d_abs.iloc[d_abs.index.get_level_values('coeff') == '1.0']
+df_119 = df_abs[df_abs['scen'] == 'ssp119']
+df_245 = df_abs[df_abs['scen'] == 'ssp245']
+df_585 = df_abs[df_abs['scen'] == 'ssp585']
+
 
 fig = plt.figure(figsize=(12,6))
 
-ax = plot_clustered_stacked([h_abs_low, d_abs_low],labels = ["his", "damip"],
+ax = plot_clustered_stacked([df_119, df_245, df_585],labels = ["ssp119", "ssp245", 'ssp585'],
                             cols = ['#1b9e77', '#7570b3', '#d95f02'])
-ax2 = plot_clustered_stacked([h_abs_high, d_abs_high],labels = ["his", "damip"],
-                            cols = ['#1b9e77', '#7570b3', '#d95f02'], z = 2)                                    
+                                   
                                     
-
-ax_list = [ax, ax2]
+#%%
+ax_list = [ax]
 for a in ax_list:
     
     a.set_ylim([-6000, 15000])
@@ -725,33 +767,183 @@ ax.legend(custom_lines, ['Population', 'Historical', 'Mortality',
 #plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_abs_total_bothcoeffs.png',
 #            bbox_inches = 'tight', pad_inches = 0.3)
 
-#%% Plot per mortality
+#%% Plot mortality
+
+import matplotlib
+fs = 14
+matplotlib.rcParams.update({'font.size': fs})
+
+scens = ['ssp119', 'ssp245', 'ssp585']
+years = ['2020s', '2030s', '2040s']
 
 
-ax = plot_clustered_stacked([h_per, d_per],labels = ["his", "damip"], cols = ['#1b9e77', '#7570b3', '#d95f02'])
+fig = plt.figure(figsize=(6,6))
+ax = fig.add_subplot(1,1,1)
 
-plt.xlabel('Period')
 
-ax.set_ylabel('% contribution to change in heat mortality')
-ax.set_xticklabels(['2005 - 2014', '2015 - 2020'])
+barWidth = 0.1
+
+#ax1.set_xlim(-0.1, 0.7)
+
+
+# Set position of bar on X axis (position for each rcm bar within each gcm category)
+n = len(years)
+positions = []
+r1 = np.arange(n)
+#r1 = r1 * 0.5 # decrease space between groups
+positions.append(r1)
+
+for i in np.arange(1,len(scens)):
+    next_pos = [x + barWidth for x in positions[i-1]]
+    positions.append(next_pos)
+ 
+#set colors
+hatch_list = ['', '//', '..']
+labels = ["his1", "his2", 'histnat1', 'histnat3']
+scen_labs = ['SSP119', 'SSP245', 'SSP585']    
+p_labs = ['2020 - 2029', '2030 - 2039', '2040 - 2049']
+
+lw = 2.0
+for i in np.arange(len(scens)):
+    
+    pos = positions[i]
+    
+    scen = scens[i]
+    dat = df_abs[df_abs['scen'] == scen]   
+    
+    label = scen_labs[i]
+    
+    ax.bar(pos, dat['p'], width = barWidth, color = '#1b9e77', label = 'Population',
+           edgecolor = 'k', hatch = hatch_list[i])
+    ax.bar(pos, dat['m'], width = barWidth, color = '#7570b3', label = 'Mortality',
+           edgecolor = 'k', hatch = hatch_list[i])
+    ax.bar(pos, dat['e'], width = barWidth, color = '#d95f02', label = 'Climate',
+           bottom = dat['p'], edgecolor = 'k', hatch = hatch_list[i])
+    
+
+ax.set_xticks(positions[1]) #positions 5 is the middle rcm
+ax.set_xticklabels(p_labs)
 
 ax.axhline(0, c = 'k', linewidth = 0.5)
 
 
 
-mor_patch = Patch(facecolor='#7570b3')
-pop_patch = Patch(facecolor='#1b9e77')
-e_patch = Patch(facecolor='#d95f02')
-his_patch = Patch(facecolor='grey')
-damip_patch = Patch(facecolor='grey', hatch = '//')
+ax.set_ylabel('Contribution to change in heat mortality')  
 
-custom_lines = [pop_patch, his_patch, mor_patch, damip_patch, e_patch]
+plt.draw()
+
+#create legend
+
+mor_patch = Patch(facecolor='#7570b3', edgecolor = 'k')
+pop_patch = Patch(facecolor='#1b9e77', edgecolor = 'k')
+e_patch = Patch(facecolor='#d95f02', edgecolor = 'k')
+                
+ssp119_patch = Patch(facecolor='white', edgecolor = 'k')
+ssp245_patch = Patch(facecolor='white', hatch = '//', edgecolor = 'k')
+ssp585_patch = Patch(facecolor='white', hatch = '..', edgecolor = 'k')
 
 
-ax.legend(custom_lines, ['Population', 'Historical', 'Mortality', 
-                         'Hist-nat', 'Climate'], 
-           bbox_to_anchor=(0.9, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
+custom_lines = [pop_patch, ssp119_patch, mor_patch, ssp245_patch, e_patch, ssp585_patch]
 
 
-#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_per.png',
+ax.legend(custom_lines, ['Population', 'SSP119', 'Mortality', 
+                         'SSP245', 'Climate', 'SSP585'], 
+           bbox_to_anchor=(1.2, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
+
+
+#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/totalrate_mort_coeff061_range_largefont.png',
+#            bbox_inches = 'tight', pad_inches = 0.3)
+
+#%% group by scenario
+
+import matplotlib
+fs = 14
+matplotlib.rcParams.update({'font.size': fs})
+
+scens = ['ssp119', 'ssp245', 'ssp585']
+years = ['2020s', '2030s', '2040s']
+
+
+fig = plt.figure(figsize=(9,6))
+ax = fig.add_subplot(1,1,1)
+
+
+barWidth = 0.2
+
+#ax1.set_xlim(-0.1, 0.7)
+
+
+# Set position of bar on X axis (position for each rcm bar within each gcm category)
+n = len(scens)
+positions = []
+r1 = np.arange(n)
+#r1 = r1 * 0.5 # decrease space between groups
+positions.append(r1)
+
+for i in np.arange(1,len(years)):
+    next_pos = [x + barWidth for x in positions[i-1]]
+    positions.append(next_pos)
+ 
+#set colors
+hatch_list = ['', '//', '..']
+labels = ["his1", "his2", 'histnat1', 'histnat3']
+scen_labs = ['SSP119', 'SSP245', 'SSP585']    
+p_labs = ['20s', '30s', '40s']
+
+lw = 2.0
+for i in np.arange(len(years)):
+    
+    pos = positions[i]
+    
+    scen = scens[i]
+    dat = df_abs[df_abs['period'] == years[i]]   
+    
+    label = scen_labs[i]
+    
+    ax.bar(pos, dat['p'], width = barWidth, color = '#1b9e77', label = 'Population',
+           edgecolor = 'k', hatch = hatch_list[i])
+    ax.bar(pos, dat['m'], width = barWidth, color = '#7570b3', label = 'Mortality',
+           edgecolor = 'k', hatch = hatch_list[i])
+    ax.bar(pos, dat['e'], width = barWidth, color = '#d95f02', label = 'Climate',
+           bottom = dat['p'], edgecolor = 'k', hatch = hatch_list[i])
+    
+
+x_locs = np.append(positions[0], positions[1])
+x_locs = np.append(x_locs, positions[2])
+
+
+ax.set_xticks(np.sort(x_locs))
+ax.set_xticklabels(np.tile(p_labs,3))
+
+
+#ax.set_xticks(positions[1]) #positions 5 is the middle rcm
+#ax.set_xticklabels(scen_labs)
+
+ax.axhline(0, c = 'k', linewidth = 0.5)
+
+
+ax.set_ylabel('Contribution to change in heat mortality')  
+
+plt.draw()
+
+#create legend
+
+mor_patch = Patch(facecolor='#7570b3', edgecolor = 'k')
+pop_patch = Patch(facecolor='#1b9e77', edgecolor = 'k')
+e_patch = Patch(facecolor='#d95f02', edgecolor = 'k')
+                
+#ssp119_patch = Patch(facecolor='white', edgecolor = 'k')
+#ssp245_patch = Patch(facecolor='white', hatch = '//', edgecolor = 'k')
+#ssp585_patch = Patch(facecolor='white', hatch = '..', edgecolor = 'k')
+
+
+custom_lines = [pop_patch, ssp119_patch, mor_patch, ssp245_patch, e_patch, ssp585_patch]
+
+
+ax.legend(custom_lines, ['Population', '2020s', 'Mortality', 
+                         '2030s', 'Climate', '2040s'], 
+           bbox_to_anchor=(1.2, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
+
+
+#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/totalrate_mort_coeff061_range_largefont.png',
 #            bbox_inches = 'tight', pad_inches = 0.3)
