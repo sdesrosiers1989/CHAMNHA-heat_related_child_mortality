@@ -203,6 +203,7 @@ path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_061/future/'
 
 
 filenames = glob.glob(path + '*PBC2_MBC.nc')
+filenames = [x for x in filenames if '20152019' not in x]
 ssp119_list = iris.cube.CubeList()
 ssp245_list = iris.cube.CubeList()
 ssp585_list = iris.cube.CubeList()
@@ -255,6 +256,8 @@ for file in filenames:
 path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/future/'
 
 filenames = glob.glob(path + '*PBC2_MBC.nc')
+filenames = [x for x in filenames if '20152019' not in x]
+
 fut119_list = iris.cube.CubeList()
 fut245_list = iris.cube.CubeList()
 fut585_list = iris.cube.CubeList()
@@ -271,6 +274,8 @@ for file in filenames:
             fut585_list.append(x)
 
 
+fut245_list = [x for x in fut245_list if tp.gcm(x) in mods]    
+fut585_list = [x for x in fut585_list if tp.gcm(x) in mods]    
 
   
 #%% Import pop and mor data 
@@ -635,6 +640,8 @@ np.nanmean(p_outlist3[0].data) +  np.nanmean(m_outlist3[0].data) +   np.nanmean(
 #245
 print(np.nanmean(ens_dif.data))
 np.nanmean(p_outlist[1].data) +  np.nanmean(m_outlist[1].data) +   np.nanmean(e_outlist[1].data) 
+print(np.nanmean(ens_dif3.data))
+np.nanmean(p_outlist3[1].data) +  np.nanmean(m_outlist3[1].data) +   np.nanmean(e_outlist3[1].data) 
 
 #585
 print(np.nanmean(ens_dif3.data))
@@ -727,188 +734,6 @@ his_df_net = copy.deepcopy(his_df)
 his_df_net['net'] = his_df_net['p'] + his_df_net['m'] + his_df_net['e']
 
 
-#%% his + future
-
-import matplotlib
-fs = 14
-matplotlib.rcParams.update({'font.size': fs})
-
-####set up figure and axes
-fig = plt.figure(figsize = (9,6))
-gs = GridSpec(ncols = 4, nrows = 1, figure = fig) #3 rows, 3 cols
-
-ax1 = fig.add_subplot(gs[0,0])
-ax2 = fig.add_subplot(gs[0,1:])
-
-ax_list = [ax1, ax2]
-for ax in ax_list:
-    ax.set_ylim(-15000, 25000)
-
-###labels and lists
-#scenarios and years to cycle through
-scen_his = ['hist-nat', 'historical']
-scen_fut = ['ssp119', 'ssp245', 'ssp585']
-years_his = ['period2']
-years_fut = ['2030s', '2040s']
-
-#labels and colours
-scen_labs_his = ['Hist-nat', 'Historical']
-scen_labs_fut = ['SSP119', 'SSP245', 'SSP585']    
-p_labs_his = ['P2']
-p_labs_fut = ['30s', '40s']
-
-lw = 2.0
-
-#sort scens ind ataframe so plot in correct order
-df_abs['scen'] = pd.Categorical(df_abs['scen'], scen_fut)
-his_df['scen'] = pd.Categorical(his_df['scen'], scen_his)
-
-
-#### set up bar locations for axes 1
-barWidth1 = 0.12
-barWidth2 = barWidth1 / 2.0
-#ax1.set_xlim(-0.1, 0.7)
-
-# Set position of bar on X axis (position for each rcm bar within each gcm category)
-n = len(scen_his)
-positions = []
-r1 = np.arange(n)
-r1 = r1 * 0.2 # decrease space between groups
-positions.append(r1)
-
- 
-#### set up bar locations for axes 2
-# Set position of bar on X axis (position for each rcm bar within each gcm category)
-
-n = len(scen_fut)
-positions2 = []
-r1 = np.arange(n)
-r1 = r1 * 0.2 # decrease space between groups
-positions2.append(r1)
-
-for i in np.arange(1,len(years_fut)):
-    next_pos = [x + barWidth2 for x in positions2[i-1]]
-    positions2.append(next_pos)
-
-
-## Plot ax1 - his
-dat = his_df  
-dat = his_df.sort_values('scen')
-
-#label = scen_labs[i]
-pos = positions[0]
-
-ax1.bar(pos, dat['p'], width = barWidth1, color = '#1b9e77', label = 'Population',
-       edgecolor = 'k')
-ax1.bar(pos, dat['m'], width = barWidth1, color = '#7570b3', label = 'Mortality',
-       edgecolor = 'k')
-ax1.bar(pos, dat['e'], width = barWidth1, color = '#d95f02', label = 'Climate',
-       bottom = dat['p'], edgecolor = 'k')
-
-
-
-## plot ax2 - future
-for i in np.arange(len(years_fut)):
-    
-    pos = positions2[i]
-    
-    #scen = scens[i]
-    dat = df_abs[df_abs['period'] == years_fut[i]]   
-    dat = dat.sort_values('scen')
-    
-    #label = scen_labs[i]
-    
-    ax2.bar(pos, dat['p'], width = barWidth2, color = '#1b9e77', label = 'Population',
-           edgecolor = 'k')
-    ax2.bar(pos, dat['m'], width = barWidth2, color = '#7570b3', label = 'Mortality',
-           edgecolor = 'k')
-    ax2.bar(pos, dat['e'], width = barWidth2, color = '#d95f02', label = 'Climate',
-           bottom = dat['p'], edgecolor = 'k')
-    
-#remove y ticks
-ax2.set_yticklabels([''] * 9)
-    
-
-#set x labels
-
-x1_locs = [0.0, 0.2]
-ax1.set_xticks(x1_locs)
-ax1.set_xticklabels(['  2011-\n2020', '  2011-\n2020'], fontsize = 12)
-
-x_locs = [0.0, 0.07, 
-          0.2, 0.27,
-          0.4, 0.47]
-
-ax2.set_xticks(np.sort(x_locs))
-xlabs = ['  2030-\n2039', '  2040-\n2049']
-ax2.set_xticklabels(np.tile(xlabs,3), fontsize = 12)
-
-
-#set horizontal line
-ax1.axhline(0, c = 'k', linewidth = 0.5)
-ax2.axhline(0, c = 'k', linewidth = 0.5)
-
-#add scenario labels
-y = -0.19
-ax1.annotate(scen_labs_his[0], (0.02, y), xycoords = 'axes fraction',
-                 rotation = 0, ha = 'left', fontsize = 12)
-ax1.annotate(scen_labs_his[1], (0.56, y), xycoords = 'axes fraction',
-                 rotation = 0, ha = 'left', fontsize = 12)
-ax2.annotate(scen_labs_fut[0], (0.10, y), xycoords = 'axes fraction',
-                 rotation = 0, ha = 'left', fontsize = 12)
-ax2.annotate(scen_labs_fut[1], (0.45, y), xycoords = 'axes fraction',
-                 rotation = 0, ha = 'left', fontsize = 12)
-ax2.annotate(scen_labs_fut[2], (0.8, y), xycoords = 'axes fraction',
-                 rotation = 0, ha = 'left', fontsize = 12)
-
-#lines
-width = .065
-trans = ax.get_xaxis_transform()
-y = -0.13
-x = -0.25
-ax1.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
-x = -0.155
-ax1.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
-
-
-width = .065
-trans = ax2.get_xaxis_transform()
-x = 0
-ax2.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
-x = 0.20
-ax2.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
-x = 0.4
-ax2.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
-
-
-##
-ax1.set_ylabel('Contribution to change in heat mortality')  
-
-#
-ax1.annotate('A)', (0.01, 1.02), xycoords = 'axes fraction',
-             rotation = 0, ha = 'left', weight = 'bold')
-ax2.annotate('B)', (0.01, 1.02), xycoords = 'axes fraction',
-             rotation = 0, ha = 'left', weight = 'bold')
-
-
-plt.draw()
-
-#create legend
-
-mor_patch = Patch(facecolor='#7570b3', edgecolor = 'k')
-pop_patch = Patch(facecolor='#1b9e77', edgecolor = 'k')
-e_patch = Patch(facecolor='#d95f02', edgecolor = 'k')
-         
-
-custom_lines = [pop_patch, mor_patch, e_patch]
-
-
-ax.legend(custom_lines, ['Population growth', 'Mortality rate declines', 'Climate change'], 
-           bbox_to_anchor=(1.1, -0.25),ncol=3,frameon = False, handletextpad = 0.5)
-
-
-#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/cc_components_withhis_2.png',
-#            bbox_inches = 'tight', pad_inches = 0.3)
 
 #%% Net
 
@@ -1076,7 +901,7 @@ ax2.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False
 
 
 ##
-ax1.set_ylabel('Contribution to change in heat mortality')  
+ax1.set_ylabel('Contribution to change in heat mortality \n (number of deaths per year)')  
 
 #
 ax1.annotate('A)', (0.01, 1.02), xycoords = 'axes fraction',
@@ -1097,10 +922,10 @@ net_patch = Patch(facecolor='grey', edgecolor = 'k')
 custom_lines = [pop_patch, mor_patch, e_patch, net_patch]
 
 
-ax.legend(custom_lines, ['Population growth', 'Mortality rate declines', 'Climate change',
+ax.legend(custom_lines, ['Population growth', 'All-cause mortality rate declines', 'Climate change',
                          'Net change'], 
-           bbox_to_anchor=(0.8, -0.25),ncol=2,frameon = False, handletextpad = 0.5)
+           bbox_to_anchor=(0.95, -0.25),ncol=2,frameon = False, handletextpad = 0.5)
 
 
-#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/cc_components_withhis_2_net.png',
+#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/cc_components_withhis_5_net_coeff061.png',
 #            bbox_inches = 'tight', pad_inches = 0.3)
