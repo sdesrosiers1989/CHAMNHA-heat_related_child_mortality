@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
+import matplotlib
+
 
 import iris
 import iris.plot as iplt
@@ -38,6 +40,9 @@ import glob
 from iris.experimental.equalise_cubes import equalise_attributes
 
 proj = ccrs.PlateCarree(central_longitude = 38)
+
+fs = 16
+matplotlib.rcParams.update({'font.size': fs})
 
 #Import my functions
 import sys
@@ -306,6 +311,69 @@ for file in filenames:
        
 #x = [tp.gcm(y) for y in his_mor1]
 
+#%% restrict to afric only
+countries = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/africa_countires_only.nc')
+
+
+country_lookup = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/country_lookup.csv')
+country_lookup['Name'][country_lookup['Name'] == 'Republic of the Congo'] = 'Congo'
+country_lookup['Name'][country_lookup['Name'] == 'eSwatini'] = 'Swaziland'
+
+
+not_in_afr = ['Albania', 'Armenia', 'Azerbaijan', 'Cyprus', 'France', 'Greece', 
+              'Iran', 'Iraq', 'Israel', 'Italy', 'Jordan', 'Kuwait', 'Lebanon',
+              'Malta', 'Northern Cyprus', 'Oman', 'Palestine', 'Portugal', 'Qatar',
+              'Saudi Arabia', 'Spain', 'Syria', 'Turkey', 'Turkmenistan', 'United Arab Emirates', 'Yemen']
+
+c_dict = dict(zip(country_lookup['Value'], country_lookup['Name']))
+
+#%% restrict africa only
+
+#obs - used to get mask
+cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
+                    iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
+
+cru_tas = cru_tas[0][0]
+cru_tas = cru_tas.regrid(damip_list[0], iris.analysis.Linear())
+
+#%%
+
+for cube in damip_list:
+    for i in np.arange(cube.shape[0]):
+        cube.data[i][np.isnan(countries.data)] = np.nan
+        cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
+    
+for cube in hist_list:
+    for i in np.arange(cube.shape[0]):
+        cube.data[i][np.isnan(countries.data)] = np.nan
+        cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
+
+for cube in damip_list1:
+    for i in np.arange(cube.shape[0]):
+        cube.data[i][np.isnan(countries.data)] = np.nan
+        cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
+        
+for cube in hist_list1:
+    for i in np.arange(cube.shape[0]):
+        cube.data[i][np.isnan(countries.data)] = np.nan
+        cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
+
+
+for cube in damip_mor:
+    cube.data[np.isnan(countries.data)] = np.nan
+    cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
+    
+for cube in his_mor:
+    cube.data[np.isnan(countries.data)] = np.nan
+    cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
+
+for cube in damip_mor1:
+    cube.data[np.isnan(countries.data)] = np.nan
+    cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
+    
+for cube in his_mor1:
+    cube.data[np.isnan(countries.data)] = np.nan
+    cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
 #%% calc pop ratio as sued in health burden model
 #pop data
 
@@ -646,6 +714,10 @@ h_abs = his_agg.drop(columns = ['p_per' , 'm_per', 'e_per', 'total'])
 d_abs = d_abs * -1
 h_abs = h_abs * -1
 
+
+#d_abs.to_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/d_abs.csv')
+#h_abs.to_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/h_abs.csv')
+
 #%% https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars-with-python-pandas
 
 def plot_clustered_stacked(dfall, cols, labels=None, title="",  H="/", width = 0.5, z = 1, **kwargs):
@@ -711,7 +783,7 @@ ax2 = plot_clustered_stacked([h_abs_high, d_abs_high],labels = ["his", "damip"],
 ax_list = [ax, ax2]
 for a in ax_list:
     
-    a.set_ylim([-6000, 15000])
+    a.set_ylim([-6000, 13000])
     a.set_xlabel('Period')
     a.set_xticklabels(['2005 - 2014', '2015 - 2020'])
     a.axhline(0, c = 'k', linewidth = 0.5)
