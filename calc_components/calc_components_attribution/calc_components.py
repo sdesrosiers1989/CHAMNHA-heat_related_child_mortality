@@ -81,70 +81,92 @@ def find_dif(his_list, histnat_list):
     dif_list = []
     difper_list = []
     
-    for i in np.arange(len(his_list)):
-        cube_list = his_list[i]
-        damip_cube_list = histnat_list[i]
+    for cube in his_list:
+        mod = tp.gcm(cube)
+        comp_cube =  [x for x in histnat_list if tp.gcm(x) == mod][0] # checked, len always 1, as it should be
+        print(mod, tp.gcm(comp_cube))
         
-        new_list = iris.cube.CubeList()
-        new_listper = iris.cube.CubeList()
-        for cube in cube_list:
-            mod = tp.gcm(cube)
-            comp_cube =  [x for x in damip_cube_list if tp.gcm(x) == mod][0] # checked, len always 1, as it should be
-            print(mod, tp.gcm(comp_cube))
-            
-            dif_cube = copy.deepcopy(cube)
-            dif_cube.data = dif_cube.data - comp_cube.data
-            new_list.append(dif_cube)
-            
-            difper_cube = copy.deepcopy(cube)
-            difper_cube.data = (difper_cube.data - comp_cube.data) / difper_cube.data
-            new_listper.append(difper_cube)
-
-        dif_list.append(new_list)
-        difper_list.append(new_listper)
+        dif_cube = copy.deepcopy(cube)
+        dif_cube.data = dif_cube.data - comp_cube.data
+        dif_list.append(dif_cube)
+        
+        difper_cube = copy.deepcopy(cube)
+        difper_cube.data = (difper_cube.data - comp_cube.data) / difper_cube.data
+        difper_list.append(difper_cube)
     
     return dif_list, difper_list
 
 #%%
     
-def calc_comp(cube_list):
+def calc_comp(cube_list, return_list =  False):
     '''order should be:
         'e2p1m1', 'e2p2m1', 'e2p1m2',
         'e1p1m1', 'e1p2m1', 'e1p1m2'
         'e2p2m2', 'e1p2m2'
     '''
     
-    p1m1e1 = cube_list[3]
-    p1m2e2 = cube_list[2]
-    p1m1e2 = cube_list[0]
-    p1m2e1 = cube_list[5]
-    p2m1e1 = cube_list[4]
-    p2m2e2 = cube_list[6]
-    p2m1e2 = cube_list[1]
-    p2m2e1 = cube_list[7]
+    p1m1e1_list = cube_list[3]
+    p1m2e2_list = cube_list[2]
+    p1m1e2_list = cube_list[0]
+    p1m2e1_list = cube_list[5]
+    p2m1e1_list = cube_list[4]
+    p2m2e2_list = cube_list[6]
+    p2m1e2_list = cube_list[1]
+    p2m2e1_list = cube_list[7]
     
-    peq1 = (p1m1e1 + p1m2e2) / 3
-    peq2 = (p1m1e2 + p1m2e1) / 6
-    peq3 = (p2m1e1 + p2m2e2) / 3
-    peq4 = (p2m1e2 + p2m2e1) / 6
+    p_list = []
+    m_list = []
+    e_list = []
     
-    p_effect = (peq1 + peq2) - (peq3 + peq4)
+    for i in np.arange(len(p1m1e1_list)):
+        
+        p1m1e1 = p1m1e1_list[i]
+        
+        #find same gcm
+        gcm = tp.gcm(p1m1e1)
+        
+        p1m2e2 = [x for x in p1m2e2_list if tp.gcm(x) == gcm][0]
+        p1m1e2 = [x for x in p1m1e2_list if tp.gcm(x) == gcm][0]
+        p1m2e1 = [x for x in p1m2e1_list if tp.gcm(x) == gcm][0]
+        p2m1e1 = [x for x in p2m1e1_list if tp.gcm(x) == gcm][0]
+        p2m2e2 = [x for x in p2m2e2_list if tp.gcm(x) == gcm][0]
+        p2m1e2 = [x for x in p2m1e2_list if tp.gcm(x) == gcm][0]
+        p2m2e1 = [x for x in p2m2e1_list if tp.gcm(x) == gcm][0]
     
-    meq1 = (p1m1e1 + p2m1e2) / 3
-    meq2 = (p1m1e2 + p2m1e1) / 6
-    meq3 = (p1m2e1 + p2m2e2) / 3
-    meq4 = (p1m2e2 + p2m2e1) / 6
-    
-    m_effect = (meq1 + meq2) - (meq3 + meq4)
-    
-    eeq1 = (p1m1e1 + p2m2e1) / 3
-    eeq2 = (p1m2e1 + p2m1e1) / 6
-    eeq3 = (p1m1e2 + p2m2e2) / 3
-    eeq4 = (p1m2e2 + p2m1e2) / 6
-    
-    e_effect = (eeq1 + eeq2) - (eeq3 + eeq4)
-    
-    return p_effect, m_effect, e_effect
+        peq1 = (p1m1e1 + p1m2e2) / 3
+        peq2 = (p1m1e2 + p1m2e1) / 6
+        peq3 = (p2m1e1 + p2m2e2) / 3
+        peq4 = (p2m1e2 + p2m2e1) / 6
+        
+        p_effect = (peq1 + peq2) - (peq3 + peq4)
+        
+        meq1 = (p1m1e1 + p2m1e2) / 3
+        meq2 = (p1m1e2 + p2m1e1) / 6
+        meq3 = (p1m2e1 + p2m2e2) / 3
+        meq4 = (p1m2e2 + p2m2e1) / 6
+        
+        m_effect = (meq1 + meq2) - (meq3 + meq4)
+        
+        eeq1 = (p1m1e1 + p2m2e1) / 3
+        eeq2 = (p1m2e1 + p2m1e1) / 6
+        eeq3 = (p1m1e2 + p2m2e2) / 3
+        eeq4 = (p1m2e2 + p2m1e2) / 6
+        
+        e_effect = (eeq1 + eeq2) - (eeq3 + eeq4)
+        
+        p_list.append(p_effect)
+        m_list.append(m_effect)
+        e_list.append(e_effect)
+        
+    p_ens = ens_mean(p_list)
+    m_ens = ens_mean(m_list)
+    e_ens = ens_mean(e_list)
+        
+    if return_list == True:
+        return p_ens, m_ens, e_ens, p_list, m_list, e_list
+    else:
+        return p_ens, m_ens, e_ens
+    #return p_ens, m_ens, e_ens, p_list, m_list, e_list
 
 
 
@@ -219,12 +241,35 @@ period1 = code_years[0]
 hist_period1 = period1[6]
 histnat_period1 = period1[7]
 
+dif, dif_per = find_dif(hist_period1, histnat_period1)
 
-#%% Find difference
-    
+ens_dif = ens_mean(dif)
+ens_perdif = ens_mean(dif_per)
 
+#second period comparison: 
+period2 = code_years[1]
+hist_period2 = period2[6]
+histnat_period2 = period2[7]
+
+dif2, dif_per2 = find_dif(hist_period2, histnat_period1)
+
+ens_dif2 = ens_mean(dif2)
+ens_perdif2 = ens_mean(dif_per2)
+
+#%% Cause of difference between CCPeriod2 and HISTNATPeriod1/2?
     
+#codes = ['e2p1m1', 'e2p2m1', 'e2p1m2',
+#        'e1p1m1', 'e1p2m1', 'e1p1m2',
+#        'e2p2m2', 'e1p2m2']
+
+p_effect2005, m_effect2005, e_effect2005 = calc_comp(code_years[1])
     
+#%%
+
+np.nanmean(ens_dif2.data)
+
+-1 * np.nanmean(p_effect2005.data) + np.nanmean(m_effect2005.data) +  (np.nanmean(e_effect2005.data) * -1)
+
 #%% Get ens mean
 
 ens_hist = []
