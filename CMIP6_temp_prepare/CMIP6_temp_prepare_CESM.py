@@ -92,35 +92,7 @@ def add_time_dim(cube):
     cube.add_dim_coord(tcoord0_dimtime, 0)
     return cube
 
-def add_lat_lon_dim(cube, base):
-    latcoord = base.coord('latitude')
-    loncoord = base.coord('longitude')
-    
-    cube.remove_coord('latitude')
-    cube.remove_coord('longitude')
-    cube.add_dim_coord(latcoord, 1)
-    cube.add_dim_coord(loncoord, 2)
-    
-    latitude = cube.coord('latitude')
-    latitude.bounds = latitude.bounds.astype(np.float64)
-    latitude.bounds=np.round(latitude.bounds,4)
-    longitude = cube.coord('longitude')
-    longitude.bounds = longitude.bounds.astype(np.float64)
-    
-    return cube 
 
-def md(cc, cc2): #cc = cube coord
-    print(cc.standard_name, cc2.standard_name)
-    print(cc.long_name, cc2.long_name)
-    print(cc.var_name, cc2.var_name)
-    print(cc.units, cc2.units)
-    print(cc.attributes, cc2.attributes)
-    print(cc.shape, cc2.shape)
-    print(cc.points.dtype, cc2.points.dtype)
-    print(cc.bounds_dtype, cc2.bounds_dtype)
-    
-#md(item[0].coord('latitude'), item[1].coord('latitude'))
-#md(item[0].coord('longitude'), item[1].coord('longitude'))
 
 
     #%%
@@ -144,27 +116,33 @@ for i in np.arange(len(cmip6_cubes)):
         for k in np.arange(1, len(item)):
             x = np.concatenate((x, item[k].data), axis = 0)
             time_points = np.append(time_points, item[k].coord('time').points)
+            
+        lon_coord = item[1].coord('longitude')
+        lat_coord = item[1].coord('latitude')
+        tcoord0 = item[1].coord('time')
+        time_coord = iris.coords.DimCoord(time_points, 
+                                               standard_name = tcoord0.standard_name, 
+                                               units = tcoord0.units, 
+                                               var_name = tcoord0.var_name, 
+                                               attributes = tcoord0.attributes)
         
-        x = np.dstack((item[0].data, item[1].data))
+        new_cube = iris.cube.Cube(data = x, 
+                                  standard_name = item[1].standard_name,
+                                  long_name = item[1].long_name,
+                                  var_name = item[1].var_name,
+                                  units = item[1].units,
+                                  attributes = item[1].attributes,
+                                  dim_coords_and_dims = [(time_coord,0), (lat_coord, 1), (lon_coord,2)])
         
-        for i in item:
-            base = item[1]
-            i = i.regrid(base, iris.analysis.AreaWeighted())
+       
             
-            
-            latitude = i.coord('latitude')
-            i.coord('latitude').bounds = latitude.bounds.astype(np.float64)
-            i.coord('latitude').bounds=np.round(latitude.bounds,4)
-            longitude = i.coord('longitude')
-            i.coord('longitude').bounds = longitude.bounds.astype(np.float64)
-            i.coord('longitude').bounds=np.round(longitude.bounds,4)
-            
-    x = item.concatenate_cube()
-    x.coord('longitude').coord_system = cs
-    x.coord('latitude').coord_system = cs
-    cmip6_cat.append(x)
+    
+    new_cube.coord('longitude').coord_system = cs
+    new_cube.coord('latitude').coord_system = cs
+    cmip6_cat.append(new_cube)
 
     
+    #%%
 # get data of interest only, 1971 - 1999, and 2071 - 2099
     #drop 2099 from HadGEM2 CCLM4 rcp8.5 as not full year
 goodyears = []
