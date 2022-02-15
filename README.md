@@ -25,8 +25,9 @@ Children are defined here as under 5, and the scripts and input data are based o
    - Decompose components of change in HRCM into change due to climate change (temperature increases), population (population growth) and all-cause mortality (declining)
    - Based on the method of Das Gupta (1993)
    - Note that you need to be quite careful with the inputs to this script, and check that all the components add up to the total change. 
-   - Scripts:
-   - 
+   - Scripts (in calc_components folder):
+     -calc_components.py - for attribution experiment. Run this first to get csv files of results, which will be used as inputs in calc_components_cc.py for creating plots
+     -calc_components_CC.py - for climate change experiments, but also takes csv file input from calc_components.py to create plots
 
 ## References
 
