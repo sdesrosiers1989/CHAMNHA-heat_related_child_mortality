@@ -213,8 +213,8 @@ path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_1/historical/'
 #future
 path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_061/future/'
 
-#historical
-filenames = glob.glob(path + '*PBC_MBC.nc')
+
+filenames = glob.glob(path + '*PBC2_MBC.nc')
 ssp119_list = iris.cube.CubeList()
 ssp245_list = iris.cube.CubeList()
 ssp585_list = iris.cube.CubeList()
@@ -233,7 +233,7 @@ for file in filenames:
     
  #%% actual mortality
 
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/'
+path = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_hismodel/'
 
 filenames = glob.glob(path + '*historical*')
 
@@ -270,14 +270,17 @@ pop_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr
 pop_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010_regrid.nc')
 pop_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
 
+pop_2015 = pop_2010 + ((pop_2019 - pop_2010) / 2)
+
 #daily mortality
 dmor_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
 dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2010_regrid.nc')
 dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2019_regrid.nc')
 
+dmor_2015 = dmor_2010 + ((dmor_2019 - dmor_2010) / 2)
 
-pop_list = [pop_2000, pop_2010, pop_2019]
-mor_list = [dmor_2000, dmor_2010, dmor_2019]
+pop_list = [pop_2000, pop_2010, pop_2015, pop_2019]
+mor_list = [dmor_2000, dmor_2010, dmor_2015, dmor_2019]
 
 #future more and pop
 
@@ -287,7 +290,7 @@ mor_path = '/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/processed/'
 mor_list_fut = []
 
 for y in years:
-    p_name = pop_path + 'ssp2_' + str(y) + '_04population_mf_BIASCORR.nc'
+    p_name = pop_path + 'ssp2_' + str(y) + '_04population_mf_BIASCORR2.nc'
     m_name = mor_path + 'ref_' + str(y) + '_04_totalmor_mf_BIASCORR.nc'
     
     pop_list.append(iris.load_cube(p_name))
@@ -354,8 +357,9 @@ for cube in hist_list:
 
 
 for cube in his:
-    cube.data.mask[np.isnan(countries.data)] = True
-    cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
+    for i in np.arange(cube.shape[0]):
+        cube.data.mask[i][np.isnan(countries.data)] = True
+        cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
     
 futmor_list = [fut119_list, fut245_list, fut585_list]
 
@@ -367,12 +371,41 @@ for cube_list in futmor_list:
 
 #%% get mdoels into year lists
     
-hyears = np.unique([x.coord('year').points[0] for x in hist_list]) 
+hyears = [np.arange(1995, 2005),
+          np.arange(2011, 2021)]
 
 his_years = iris.cube.CubeList()
 
-for y in hyears:
-    h_list = [x for x in hist_list if x.coord('year').points[0] == y]
+mods = np.unique([tp.gcm(x) for x in hist_list])
+
+for year_group in hyears:
+    if 1995 in year_group:
+        h_list = [x for x in hist_list if x.coord('year').points[0] == 1995]
+        
+    else:
+        #2011 - 2020 are split over 2 cube lists
+        h_list0 = [x for x in hist_list if x.coord('year').points[0] == 2005]
+        h_list1 = [x for x in hist_list if x.coord('year').points[0] == 2015]
+        h_list = iris.cube.CubeList()
+        
+        for mod in mods:
+            h_list0m = [y for y in h_list0 if tp.gcm(y) == mod][0]
+            h_list1m = [y for y in h_list1 if tp.gcm(y) == mod]
+            
+            if len(h_list1m) > 0:
+                #future mods only don't have 2015 - 2020 historical period, as that's actually climate change
+                h_list1m = h_list1m[0]
+                x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
+                x1 = h_list1m.extract(iris.Constraint(year = lambda cell: cell <= 2020))
+                
+                x = iris.cube.CubeList([x0,x1])
+                x = x.concatenate_cube()
+                
+                h_list.append(x)
+            else:
+                x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
+                h_list.append(x0)
+        
     h_mean_list = iris.cube.CubeList()
     for cube in h_list:
         h_mean_list.append(cube.collapsed('time', iris.analysis.MEAN))
@@ -425,15 +458,44 @@ for y in years:
     
     ssp585_years.append(f_mean_list)
 
-#%% actual mortality years
+#%% actual mortality years (need 1995 -2004 and 2011 - 2020 for historical)
     
 years = np.unique([x.coord('year').points[0] for x in his]) 
 
+hyears = [np.arange(1995, 2005),
+          np.arange(2011, 2021)]
 his_mor_years = iris.cube.CubeList()
 
-for y in years:
-    
-    h_list = [x for x in his if x.coord('year').points[0] == y]
+mods = np.unique([tp.gcm(x) for x in his])
+
+for year_group in hyears:
+    if 1995 in year_group:
+        h_list = [x for x in his if x.coord('year').points[0] == 1995]
+        
+    else:
+        #2011 - 2020 are split over 2 cube lists
+        h_list0 = [x for x in his if x.coord('year').points[0] == 2005]
+        h_list1 = [x for x in his if x.coord('year').points[0] == 2015]
+        h_list = iris.cube.CubeList()
+        
+        for mod in mods:
+            h_list0m = [y for y in h_list0 if tp.gcm(y) == mod][0]
+            h_list1m = [y for y in h_list1 if tp.gcm(y) == mod]
+            
+            if len(h_list1m) > 0:
+                #future mods only don't have 2015 - 2020 historical period, as that's actually climate change
+                h_list1m = h_list1m[0]
+                x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
+                x1 = h_list1m.extract(iris.Constraint(year = lambda cell: cell <= 2020))
+                
+                x = iris.cube.CubeList([x0,x1])
+                x = x.concatenate_cube()
+                
+                h_list.append(x)
+            else:
+                x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
+                h_list.append(x0)
+        
     his_mor_years.append(h_list)
 
 
@@ -470,9 +532,9 @@ for y in years:
 
 
 #%% Cause of difference between Hist  and future?
-# comp_period = 2005 - 2014
+# comparing to index 0 = 1995 - 2004
     
-i_h = 1 # index corresponding to 2005 - 2014
+i_h = 0 # index corresponding to 1995 - 2004
 
 #compare 2020, 2030, 2040
 
@@ -484,8 +546,8 @@ m_outlist = []
 e_outlist = []
 
 for i in np.arange(len(scen_list)):
-    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[3]]
-    m_inlist = [dmor_2010, mor_list_fut[0]]
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[4]]
+    m_inlist = [dmor_2000, mor_list_fut[0]]
     e_inlist = [his_years[i_h], scen_list[i][0]]
 
     p_effect, m_effect, e_effect = calc_comp(p_inlist, m_inlist, e_inlist, return_list = False)
@@ -504,8 +566,8 @@ m_outlist3 = []
 e_outlist3 = []
 
 for i in np.arange(len(scen_list)):
-    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[4]]
-    m_inlist = [dmor_2010, mor_list_fut[1]]
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[5]]
+    m_inlist = [dmor_2000, mor_list_fut[1]]
     e_inlist = [his_years[i_h], scen_list[i][1]]
 
     p_effect, m_effect, e_effect = calc_comp(p_inlist, m_inlist, e_inlist, return_list = False)
@@ -521,8 +583,8 @@ m_outlist4 = []
 e_outlist4 = []
 
 for i in np.arange(len(scen_list)):
-    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[5]]
-    m_inlist = [dmor_2010, mor_list_fut[2]]
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[6]]
+    m_inlist = [dmor_2000, mor_list_fut[2]]
     e_inlist = [his_years[i_h], scen_list[i][2]]
 
     p_effect, m_effect, e_effect = calc_comp(p_inlist, m_inlist, e_inlist, return_list = False)
@@ -537,6 +599,7 @@ for i in np.arange(len(scen_list)):
 #ssp119
 #1995 - 2004: his
 base_period = his_mor_years[i_h]
+base_period = [x.collapsed(['time'], iris.analysis.MEAN) for x in base_period]
 fperiod = ssp119_mor_years[0]
 fperiod3 = ssp119_mor_years[1]
 fperiod4 = ssp119_mor_years[2]
@@ -570,6 +633,7 @@ fperiod4_ens = ens_mean(fperiod4)
 
 #
 base_period = his_mor_years[i_h]
+base_period = [x.collapsed(['time'], iris.analysis.MEAN) for x in base_period]
 scen_list = [ssp119_mor_years, ssp245_mor_years, ssp585_mor_years]
 ens_dif_list = []
 ens_dif3_list = []
@@ -590,7 +654,7 @@ for i in np.arange(len(scen_list)):
     ens_dif4_list.append(ens_mean(dif4))
 
 
-#%% Check decomp
+#%% Check decomp - run scenario specific ens from above first
 
 print(np.nanmean(bperiod_ens.data))
 print(np.nanmean(fperiod_ens.data))
@@ -600,7 +664,11 @@ np.nanmean(p_outlist[0].data)
 np.nanmean(m_outlist[0].data)
 np.nanmean(e_outlist[0].data)
 
+#ssp119
+print(np.nanmean(ens_dif.data))
 np.nanmean(p_outlist[0].data) +  np.nanmean(m_outlist[0].data) +   np.nanmean(e_outlist[0].data) 
+print(np.nanmean(ens_dif3.data))
+np.nanmean(p_outlist3[0].data) +  np.nanmean(m_outlist3[0].data) +   np.nanmean(e_outlist3[0].data) 
 
 #245
 print(np.nanmean(ens_dif.data))
@@ -609,6 +677,7 @@ np.nanmean(p_outlist[1].data) +  np.nanmean(m_outlist[1].data) +   np.nanmean(e_
 #585
 print(np.nanmean(ens_dif3.data))
 np.nanmean(p_outlist3[2].data) +  np.nanmean(m_outlist3[2].data) +   np.nanmean(e_outlist3[2].data) 
+
 
 
 #%% What percentage of the change is due to climate, pop and mortality?
