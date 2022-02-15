@@ -97,9 +97,37 @@ def add_time_dim(cube):
 
     #%%
 
+def create_cube(item, base):
+    x = item[0].data
+    time_points = item[0].coord('time').points
+    for k in np.arange(1, len(item)):
+        x = np.concatenate((x, item[k].data), axis = 0)
+        time_points = np.append(time_points, item[k].coord('time').points)
+        
+    lon_coord = base.coord('longitude')
+    lat_coord = base.coord('latitude')
+    tcoord0 = base.coord('time')
+    time_coord = iris.coords.DimCoord(time_points, 
+                                           standard_name = tcoord0.standard_name, 
+                                           units = tcoord0.units, 
+                                           var_name = tcoord0.var_name, 
+                                           attributes = tcoord0.attributes)
+    
+    new_cube = iris.cube.Cube(data = x, 
+                              standard_name = base.standard_name,
+                              long_name = base.long_name,
+                              var_name = base.var_name,
+                              units = base.units,
+                              attributes = base.attributes,
+                              dim_coords_and_dims = [(time_coord,0), (lat_coord, 1), (lon_coord,2)])
+    return new_cube
+
+
+
+
 #concatenate and ensure all have same coord system
 cmip6_cat = iris.cube.CubeList()
-for i in np.arange(len(cmip6_cubes)):
+for i in np.arange(2, len(cmip6_cubes)):
     item =  cmip6_cubes[i]
     equalise_attributes(item)
     unify_time_units(item)
@@ -108,34 +136,14 @@ for i in np.arange(len(cmip6_cubes)):
             j.remove_coord('height')
         except:
             print('no height')
-    if i == 0:
+    if i == 2:
+        item = item[0:9] # after this > 2100
+        item[0] = add_time_dim(item[0])
+    else:
+        
         item[0] = add_time_dim(item[0])
         
-        x = item[0].data
-        time_points = item[0].coord('time').points
-        for k in np.arange(1, len(item)):
-            x = np.concatenate((x, item[k].data), axis = 0)
-            time_points = np.append(time_points, item[k].coord('time').points)
-            
-        lon_coord = item[1].coord('longitude')
-        lat_coord = item[1].coord('latitude')
-        tcoord0 = item[1].coord('time')
-        time_coord = iris.coords.DimCoord(time_points, 
-                                               standard_name = tcoord0.standard_name, 
-                                               units = tcoord0.units, 
-                                               var_name = tcoord0.var_name, 
-                                               attributes = tcoord0.attributes)
-        
-        new_cube = iris.cube.Cube(data = x, 
-                                  standard_name = item[1].standard_name,
-                                  long_name = item[1].long_name,
-                                  var_name = item[1].var_name,
-                                  units = item[1].units,
-                                  attributes = item[1].attributes,
-                                  dim_coords_and_dims = [(time_coord,0), (lat_coord, 1), (lon_coord,2)])
-        
-       
-            
+    new_cube = create_cube(item, item[1]) 
     
     new_cube.coord('longitude').coord_system = cs
     new_cube.coord('latitude').coord_system = cs
