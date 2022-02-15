@@ -47,7 +47,7 @@ def ens_mean(cube_list):
     #add ensemble as dimension so can use cube statistics
     for i in np.arange(len(cube_list)):
         item = cube_list[i]
-        gcm = i
+        gcm = tp.gcm(item)
         try:
             item.add_aux_coord(iris.coords.AuxCoord(gcm, long_name = 'ens'))
         except:
@@ -120,13 +120,13 @@ def calc_comp(p_list, m_list, e_list, return_list =  False):
         peq1 = (m1 * e1 + m2 * e2)  / 3
         peq2 = (m1 * e2 + m2 * e1) / 6
         
-        p_effect = copy.deepcopy(p_list[0])
+        p_effect = copy.deepcopy(e1_mlist[i])
         p_effect.data = (p1 - p2)*(peq1 + peq2)
         
         meq1 = (p1 * e1 + p2 * e2)  / 3
         meq2 = (p1 * e2 + p2 * e1) / 6
                 
-        m_effect = copy.deepcopy(m_list[0])
+        m_effect = copy.deepcopy(e1_mlist[i])
         m_effect.data = (m1 - m2)*(meq1 + meq2)
         
         eeq1 = (m1 * p1 + m2 * p2)  / 3
@@ -197,6 +197,13 @@ damip_mor = iris.cube.CubeList()
 for file in filenames:
     x = iris.load_cube(file)
     damip_mor.append(x)
+    
+filenames = glob.glob(path + '*historical*')
+his_mor = iris.cube.CubeList()
+for file in filenames:
+    x = iris.load_cube(file)
+    if tp.gcm(x) in damip_mods:
+       his_mor.append(x)
 
 #%% calc pop ratio as sued in health burden model
 #pop data
@@ -236,12 +243,14 @@ for y in years:
 years = np.unique([x.coord('year').points[0] for x in damip_mor]) #damip and his years same
 
 damip_mor_years =  iris.cube.CubeList()
+his_mor_years = iris.cube.CubeList()
 
 for y in years:
     d_list = [x for x in damip_mor if x.coord('year').points[0] == y]
-
-    
     damip_mor_years.append(d_list)
+    
+    h_list = [x for x in his_mor if x.coord('year').points[0] == y]
+    his_mor_years.append(h_list)
 
 
 #%% Cause of difference between Histnat T1 and T2?
@@ -249,14 +258,35 @@ for y in years:
 p_inlist = [pop_ratio_list[0], pop_ratio_list[1]]
 m_inlist = [dmor_2000, dmor_2010]
 e_inlist = [damip_years[0], damip_years[1]]
+e_his_inlist = [his_years[0], his_years[1]]
 
 p_effect, m_effect, e_effect, plist, mlist, elist = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
-    
+#his T2 vs T1
+p_effect_h, m_effect_h, e_effect_h, plist_h, mlist_h, elist_h = calc_comp(p_inlist, m_inlist, e_his_inlist, return_list = True)
+  
+#hist nat T3 vs T1
+p_inlist = [pop_ratio_list[0], pop_ratio_list[2]]
+m_inlist = [dmor_2000, dmor_2019]
+e_inlist = [damip_years[0], damip_years[2]]
+
+p_effect3, m_effect3, e_effect3, plist3, mlist3, elist3 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
+  
+#hist nat T3 vs T1
+p_inlist = [pop_ratio_list[0], pop_ratio_list[2]]
+m_inlist = [dmor_2000, dmor_2019]
+e_inlist = [damip_years[0], damip_years[2]]
+e_his_inlist = [his_years[0], his_years[2]]
+
+p_effect3, m_effect3, e_effect3, plist3, mlist3, elist3 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
+p_effect_h3, m_effect_h3, e_effect_h3, plist_h3, mlist_h3, elist_h3 = calc_comp(p_inlist, m_inlist, e_his_inlist, return_list = True)
+
+  
 #%% Check against actual dif
 
 #1995 - 2004: pop and mortality the same (onyl due to climate)
 period1 = damip_mor_years[0]
 period2 = damip_mor_years[1]
+period3 = damip_mor_years[2]
 
 dif, dif_per = find_dif(period1, period2)
 
@@ -265,8 +295,39 @@ ens_perdif = ens_mean(dif_per)
 
 period1_ens = ens_mean(period1)
 period2_ens = ens_mean(period2)
+period3_ens = ens_mean(period3)
 
-#%%
+
+#hist ant T3 s T1 dif
+dif3, dif_per3 = find_dif(period1, period3)
+
+ens_dif3 = ens_mean(dif3)
+ens_perdif3 = ens_mean(dif_per3)
+
+#historical difs
+
+period1_h = his_mor_years[0]
+period2_h = his_mor_years[1]
+period3_h = his_mor_years[2]
+
+dif_h, dif_per_h = find_dif(period1_h, period2_h)
+
+ens_dif_h = ens_mean(dif_h)
+ens_perdif_h = ens_mean(dif_per_h)
+
+period1_ens_h = ens_mean(period1_h)
+period2_ens_h = ens_mean(period2_h)
+period3_ens_h = ens_mean(period3_h)
+
+
+#hist ant T3 s T1 dif
+dif_h3, dif_per_h3 = find_dif(period1_h, period3_h)
+
+ens_dif_h3 = ens_mean(dif_h3)
+ens_perdif_h3 = ens_mean(dif_per_h3)
+
+
+#%% Check decomp
 
 print(np.nanmean(period1_ens.data))
 print(np.nanmean(period2_ens.data))
@@ -279,26 +340,71 @@ np.nanmean(e_effect.data)
 np.nanmean(p_effect.data) +  np.nanmean(m_effect.data) +   np.nanmean(e_effect.data) 
 
 
-#%%
+np.nanmean(p_effect3.data)
+np.nanmean(m_effect3.data)
+np.nanmean(e_effect3.data)
+print(np.nanmean(ens_dif3.data))
+np.nanmean(p_effect3.data) +  np.nanmean(m_effect3.data) +   np.nanmean(e_effect3.data) 
 
-i, j, k = 40,40, 0 
+#historical
+print(np.nanmean(ens_dif_h3.data))
+np.nanmean(p_effect_h3.data) +  np.nanmean(m_effect_h3.data) +   np.nanmean(e_effect_h3.data) 
 
-print(period1[k][i,j].data)
-print(period2[k][i,j].data)
-print(dif[k][i,j].data)
+print(np.nanmean(ens_dif_h.data))
+np.nanmean(p_effect_h.data) +  np.nanmean(m_effect_h.data) +   np.nanmean(e_effect_h.data) 
 
-print(plist[k][i,j].data)
-print(mlist[k][i,j].data)
-print(elist[k][i,j].data)
+#%%check individual historical models - order mixed up
 
-plist[k][i,j].data + mlist[k][i,j].data +  elist[k][i,j].data
+print(np.nanmean(dif_h3[2].data))
+np.nanmean(plist_h3[0].data) +  np.nanmean(mlist_h3[0].data) +   np.nanmean(elist_h3[0].data) 
+
 
 #%% What percentage of the change is due to climate, pop and mortality?
 
-total_change = np.nanmean(ens_dif.data)
+def cube_to_frame(p_effect_list, m_effect_list, e_effect_list, total_dif, period):
+    
+    df = pd.DataFrame(columns = ['model', 'period', 'p', 'm', 'e', 'p_per', 'm_per', 'e_per', 'total'])
 
-p_per = np.nanmean(p_effect.data) / total_change * 100
-m_per = np.nanmean(m_effect.data) / total_change * 100
-e_per = np.nanmean(e_effect.data) / total_change * 100
+    for i in np.arange(len(p_effect_list)):
+        p = p_effect_list[i]
+        gcm = tp.gcm(p)
+        
+        m = [x for x in m_effect_list if x.coord('ens').points[0] == gcm][0]
+        e = [x for x in e_effect_list if x.coord('ens').points[0] == gcm][0]
+        d = [x for x in total_dif if x.coord('ens').points[0] == gcm][0]
+        
+        p_val =  np.nanmean(p.data)
+        m_val =  np.nanmean(m.data)
+        e_val =  np.nanmean(e.data)
+        d_val =  np.nanmean(d.data)
+        
+        p_per = p_val / d_val * 100
+        m_per = m_val / d_val * 100
+        e_per = e_val / d_val * 100
+    
+            
+        y = pd.DataFrame(data = {'model': gcm,
+                                 'period': period,
+                                 'p': p_val,
+                                 'm': m_val,
+                                 'e': e_val,
+                                 'p_per': p_per,
+                                 'm_per': m_per,
+                                 'e_per': e_per,
+                                 'total': p_per + m_per + e_per}, index = [0])
+
+        
+        df = df.append(y)
+    
+    return df
 
 
+damip_p2 = cube_to_frame(plist, mlist, elist, dif, 'period2')
+damip_p3 = cube_to_frame(plist3, mlist3, elist3, dif3, 'period3')
+his_p2 = cube_to_frame(plist_h, mlist_h, elist_h, dif_h, 'period2')
+his_p3 = cube_to_frame(plist_h3, mlist_h3, elist_h3, dif_h3, 'period3')
+
+damip_agg = damip_p2.mean()
+his_agg = his_p2.mean()
+damip_agg3 = damip_p3.mean()
+his_agg3 = his_p3.mean()
