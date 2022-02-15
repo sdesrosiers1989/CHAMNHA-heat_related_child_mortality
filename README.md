@@ -28,6 +28,10 @@ Children are defined here as under 5, and the scripts and input data are based o
    - Scripts (in calc_components folder): <br />
      - calc_components.py - for attribution experiment. Run this first to get csv files of results, which will be used as inputs in calc_components_cc.py for creating plots
      - calc_components_CC.py - for climate change experiments, but also takes csv file input from calc_components.py to create plots
+## Branches
+- master: use this one for all analysis
+- popmor_dif_biascorr: <br />
+  - Created when checking the impact of different bias-correction methods for future population and mortality on the HRCM and decomposition results. Impact of different methods minimal, so stayed used original, simpler method.
 
 ## References
 
