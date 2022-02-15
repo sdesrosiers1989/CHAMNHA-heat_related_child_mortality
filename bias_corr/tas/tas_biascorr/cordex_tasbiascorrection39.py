@@ -402,7 +402,7 @@ For each model and each month calculate a correction factor
 ## define variables
 # define area
 min_lat = -35.0
-max_lat = 30.0
+max_lat = 39.5
 min_lon = -20.0
 max_lon = 53.0
 area = [min_lat, max_lat, min_lon, max_lon]
