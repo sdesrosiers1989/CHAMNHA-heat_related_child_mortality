@@ -115,13 +115,16 @@ def calc_comp(p_list, m_list, e_list, return_list =  False):
     m_outlist = iris.cube.CubeList()
     e_outlist = iris.cube.CubeList()
     
-    for i in np.arange(len(e1_mlist)):
+    for i in np.arange(len(e2_mlist)):
         
-        e1 = e1_mlist[i].data
+        e2 = e2_mlist[i].data
         
         #find same gcm
-        gcm = tp.gcm(e1_mlist[i])
-        e2 = [x for x in e2_mlist if tp.gcm(x) == gcm][0].data
+        gcm = tp.gcm(e2_mlist[i])
+        e1 = [x for x in e1_mlist if tp.gcm(x) == gcm][0].data
+        
+                
+        
         
         
         peq1 = (m1 * e1 + m2 * e2)  / 3
@@ -205,32 +208,28 @@ for file in filenames:
         
 path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_1/historical/'
 
-#historical
-filenames = glob.glob(path + '*historical*.nc')
 
-hist_list1 = iris.cube.CubeList()
-for file in filenames:
-    x = iris.load_cube(file)
-    hist_list1.append(x)
     
 #future
 path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_061/future/'
 
 #historical
 filenames = glob.glob(path + '*PBC_MBC.nc')
-fut_list = iris.cube.CubeList()
-for file in filenames:
-    x = iris.load_cube(file)
-    fut_list.append(x)
-        
-path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_1/future/'
+ssp119_list = iris.cube.CubeList()
+ssp245_list = iris.cube.CubeList()
+ssp585_list = iris.cube.CubeList()
 
-#historical
-filenames = glob.glob(path + '*PBC_MBC.nc')
-fut_list1 = iris.cube.CubeList()
 for file in filenames:
     x = iris.load_cube(file)
-    fut_list1.append(x)
+    if 'ssp119' in file:
+        ssp119_list.append(x)
+    elif 'ssp245' in file:
+        ssp245_list.append(x)
+    elif 'ssp585' in file:
+        ssp585_list.append(x)
+        
+
+
     
  #%% actual mortality
 
@@ -243,31 +242,25 @@ for file in filenames:
     x = iris.load_cube(file)
     his.append(x)
     
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_1/thres_hismodel/'
-
-filenames = glob.glob(path + '*historical*')
-
-his1 = iris.cube.CubeList()
-for file in filenames:
-    x = iris.load_cube(file)
-    his1.append(x)
     
 path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/future/'
 
 filenames = glob.glob(path + '*PBC_MBC.nc')
-fut = iris.cube.CubeList()
+fut119_list = iris.cube.CubeList()
+fut245_list = iris.cube.CubeList()
+fut585_list = iris.cube.CubeList()
+
 for file in filenames:
     x = iris.load_cube(file)
-    fut.append(x)
+    if 'ssp119' in file:
+        fut119_list.append(x)
+    elif 'ssp245' in file:
+        fut245_list.append(x)
+    elif 'ssp585' in file:
+        fut585_list.append(x)
 
 
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_1/thres_hismodel/future/'
 
-filenames = glob.glob(path + '*PBC_MBC.nc')
-fut1 = iris.cube.CubeList()
-for file in filenames:
-    x = iris.load_cube(file)
-    fut1.append(x)
   
 #%% Import pop and mor data 
 
@@ -341,46 +334,36 @@ cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
                     iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
 
 cru_tas = cru_tas[0][0]
-cru_tas = cru_tas.regrid(fut_list[0], iris.analysis.Linear())
+cru_tas = cru_tas.regrid(ssp119_list[0], iris.analysis.Linear())
     
 
 #%%
 
-for cube in fut_list:
-    for i in np.arange(cube.shape[0]):
-        cube.data.mask[i][np.isnan(countries.data)] = True
-        cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
+fut_list = [ssp119_list, ssp245_list, ssp585_list]
+
+for cube_list in fut_list:
+    for cube in cube_list:
+        for i in np.arange(cube.shape[0]):
+            cube.data.mask[i][np.isnan(countries.data)] = True
+            cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
     
 for cube in hist_list:
     for i in np.arange(cube.shape[0]):
         cube.data.mask[i][np.isnan(countries.data)] = True
         cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
 
-for cube in fut_list1:
-    for i in np.arange(cube.shape[0]):
-        cube.data.mask[i][np.isnan(countries.data)] = True
-        cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
-        
-for cube in hist_list1:
-    for i in np.arange(cube.shape[0]):
-        cube.data.mask[i][np.isnan(countries.data)] = True
-        cube.data[i] = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube[i,:,:].data)
 
 for cube in his:
     cube.data.mask[np.isnan(countries.data)] = True
     cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
     
-for cube in his1:
-    cube.data.mask[np.isnan(countries.data)] = True
-    cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
+futmor_list = [fut119_list, fut245_list, fut585_list]
 
-for cube in fut:
-    cube.data.mask[np.isnan(countries.data)] = True
-    cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
-    
-for cube in fut1:
-    cube.data.mask[np.isnan(countries.data)] = True
-    cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
+for cube_list in futmor_list:
+    for cube in cube_list:
+        cube.data.mask[np.isnan(countries.data)] = True
+        cube.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), cube.data)
+
 
 #%% get mdoels into year lists
     
@@ -395,51 +378,52 @@ for y in hyears:
         h_mean_list.append(cube.collapsed('time', iris.analysis.MEAN))
     
     his_years.append(h_mean_list)
-    
+
  
-    
-#coeff 1
-his_years1 = iris.cube.CubeList()
-
-for y in hyears:
- 
-
-    h_list = [x for x in hist_list1 if x.coord('year').points[0] == y]
-    h_mean_list = iris.cube.CubeList()
-    for cube in h_list:
-        h_mean_list.append(cube.collapsed('time', iris.analysis.MEAN))
-    
-
-    his_years1.append(h_mean_list)
-    
+        
     
     
 # future
     
-years = np.unique([x.coord('year').points[0] for x in fut_list]) 
+years = np.unique([x.coord('year').points[0] for x in ssp119_list]) 
 
-fut_years = iris.cube.CubeList()
+ssp119_years = iris.cube.CubeList()
 
 for y in years:
-    f_list = [x for x in fut_list if x.coord('year').points[0] == y]
+    f_list = [x for x in ssp119_list if x.coord('year').points[0] == y]
     f_mean_list = iris.cube.CubeList()
     for cube in f_list:
         f_mean_list.append(cube.collapsed('time', iris.analysis.MEAN))
     
-    fut_years.append(f_mean_list)
+    ssp119_years.append(f_mean_list)
     
- 
-    
-#coeff 1
-fut_years1 = iris.cube.CubeList()
+
+#ssp245
+years = np.unique([x.coord('year').points[0] for x in ssp245_list]) 
+
+ssp245_years = iris.cube.CubeList()
 
 for y in years:
-    f_list = [x for x in fut_list1 if x.coord('year').points[0] == y]
+    f_list = [x for x in ssp245_list if x.coord('year').points[0] == y]
     f_mean_list = iris.cube.CubeList()
     for cube in f_list:
         f_mean_list.append(cube.collapsed('time', iris.analysis.MEAN))
     
-    fut_years1.append(f_mean_list)
+    ssp245_years.append(f_mean_list)
+  
+    
+#585
+years = np.unique([x.coord('year').points[0] for x in ssp585_list]) 
+
+ssp585_years = iris.cube.CubeList()
+
+for y in years:
+    f_list = [x for x in ssp585_list if x.coord('year').points[0] == y]
+    f_mean_list = iris.cube.CubeList()
+    for cube in f_list:
+        f_mean_list.append(cube.collapsed('time', iris.analysis.MEAN))
+    
+    ssp585_years.append(f_mean_list)
 
 #%% actual mortality years
     
@@ -452,32 +436,37 @@ for y in years:
     h_list = [x for x in his if x.coord('year').points[0] == y]
     his_mor_years.append(h_list)
 
-his_mor_years1 = iris.cube.CubeList()
-
-for y in years:
-
-    
-    h_list = [x for x in his1 if x.coord('year').points[0] == y]
-    his_mor_years1.append(h_list)
 
 
 #fut
-years = np.unique([x.coord('year').points[0] for x in fut]) 
+years = np.unique([x.coord('year').points[0] for x in fut119_list]) 
 
-fut_mor_years = iris.cube.CubeList()
+ssp119_mor_years = iris.cube.CubeList()
 
 for y in years:
     
-    f_list = [x for x in fut if x.coord('year').points[0] == y]
-    fut_mor_years.append(f_list)
+    f_list = [x for x in fut119_list if x.coord('year').points[0] == y]
+    ssp119_mor_years.append(f_list)
 
-fut_mor_years1 = iris.cube.CubeList()
+years = np.unique([x.coord('year').points[0] for x in fut245_list]) 
+
+ssp245_mor_years = iris.cube.CubeList()
 
 for y in years:
-
     
-    f_list = [x for x in fut1 if x.coord('year').points[0] == y]
-    fut_mor_years1.append(f_list)
+    f_list = [x for x in fut245_list if x.coord('year').points[0] == y]
+    ssp245_mor_years.append(f_list)
+    
+years = np.unique([x.coord('year').points[0] for x in fut585_list]) 
+
+ssp585_mor_years = iris.cube.CubeList()
+
+for y in years:
+    
+    f_list = [x for x in fut585_list if x.coord('year').points[0] == y]
+    ssp585_mor_years.append(f_list)
+
+
 
 
 #%% Cause of difference between Hist  and future?
@@ -490,14 +479,14 @@ i_h = 1 # index corresponding to 2005 - 2014
 #2020
 p_inlist = [pop_ratio_list[i_h], pop_ratio_list[3]]
 m_inlist = [dmor_2010, mor_list_fut[0]]
-e_inlist = [his_years[i_h], fut_years[0]]
+e_inlist = [his_years[i_h], ssp119_years[0]]
 
 p_effect, m_effect, e_effect, plist, mlist, elist = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
 
 #2030
 p_inlist = [pop_ratio_list[i_h], pop_ratio_list[4]]
 m_inlist = [dmor_2010, mor_list_fut[1]]
-e_inlist = [his_years[i_h], fut_years[1]]
+e_inlist = [his_years[i_h], ssp119_years[1]]
 
 p_effect3, m_effect3, e_effect3, plist3, mlist3, elist3 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
   
@@ -505,42 +494,20 @@ p_effect3, m_effect3, e_effect3, plist3, mlist3, elist3 = calc_comp(p_inlist, m_
 
 p_inlist = [pop_ratio_list[i_h], pop_ratio_list[5]]
 m_inlist = [dmor_2010, mor_list_fut[2]]
-e_inlist = [his_years[i_h], fut_years[2]]
+e_inlist = [his_years[i_h], ssp119_years[2]]
 
 p_effect4, m_effect4, e_effect4, plist4, mlist4, elist4 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
   
 
-#coeff 1
-   
-#2020
-p_inlist = [pop_ratio_list[i_h], pop_ratio_list[3]]
-m_inlist = [dmor_2010, mor_list_fut[0]]
-e_inlist = [his_years1[i_h], fut_years1[0]]
 
-p_effect1, m_effect1, e_effect1, plist1, mlist1, elist1 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
-
-#2030
-p_inlist = [pop_ratio_list[i_h], pop_ratio_list[4]]
-m_inlist = [dmor_2010, mor_list_fut[1]]
-e_inlist = [his_years1[i_h], fut_years1[1]]
-
-p_effect31, m_effect31, e_effect31, plist31, mlist31, elist31 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
-  
-#2040
-
-p_inlist = [pop_ratio_list[i_h], pop_ratio_list[5]]
-m_inlist = [dmor_2010, mor_list_fut[2]]
-e_inlist = [his_years1[i_h], fut_years1[2]]
-
-p_effect41, m_effect41, e_effect41, plist41, mlist41, elist41 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
-  
 #%% Check values
 
+#ssp119
 #1995 - 2004: his
 base_period = his_mor_years[i_h]
-fperiod = fut_mor_years[0]
-fperiod3 = fut_mor_years[1]
-fperiod4 = fut_mor_years[2]
+fperiod = ssp119_mor_years[0]
+fperiod3 = ssp119_mor_years[1]
+fperiod4 = ssp119_mor_years[2]
 
 dif, dif_per = find_dif(base_period, fperiod)
 dif3, dif_per3 = find_dif(base_period, fperiod3)
@@ -561,30 +528,6 @@ fperiod4_ens = ens_mean(fperiod4)
 
 
 
-
-# coeff 1
-
-base_period1 = his_mor_years1[i_h]
-fperiod1 = fut_mor_years1[0]
-fperiod31 = fut_mor_years1[1]
-fperiod41 = fut_mor_years1[2]
-
-dif1, dif_per1 = find_dif(base_period1, fperiod1)
-dif31, dif_per31 = find_dif(base_period1, fperiod31)
-dif41, dif_per41 = find_dif(base_period1, fperiod41)
-
-ens_dif1 = ens_mean(dif1)
-ens_perdif1 = ens_mean(dif_per1)
-ens_dif31 = ens_mean(dif31)
-ens_perdif31 = ens_mean(dif_per31)
-ens_dif41 = ens_mean(dif41)
-ens_perdif41 = ens_mean(dif_per41)
-
-bperiod_ens1 = ens_mean(base_period1)
-fperiod_ens1 = ens_mean(fperiod1)
-fperiod3_ens1 = ens_mean(fperiod31)
-fperiod4_ens1 = ens_mean(fperiod41)
-
 #%% Check decomp
 
 print(np.nanmean(bperiod_ens.data))
@@ -597,16 +540,6 @@ np.nanmean(e_effect.data)
 
 np.nanmean(p_effect.data) +  np.nanmean(m_effect.data) +   np.nanmean(e_effect.data) 
 
-#coeff 1
-print(np.nanmean(bperiod_ens1.data))
-print(np.nanmean(fperiod_ens1.data))
-print(np.nanmean(ens_dif1.data))
-
-np.nanmean(p_effect1.data)
-np.nanmean(m_effect1.data)
-np.nanmean(e_effect1.data)
-
-np.nanmean(p_effect1.data) +  np.nanmean(m_effect1.data) +   np.nanmean(e_effect1.data) 
 
 
 #%% What percentage of the change is due to climate, pop and mortality?
