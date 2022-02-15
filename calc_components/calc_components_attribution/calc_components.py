@@ -501,7 +501,9 @@ ax.legend(custom_lines, ['Population', 'Historical', 'Mortality',
            bbox_to_anchor=(0.9, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
 
 
-#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_abs_total.png',
+#have to run plt.savefig at same time as create figure to get it to save correctly
+
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_abs_total.png',
 #            bbox_inches = 'tight', pad_inches = 0.3)
 
 #%% Plot per mortality
