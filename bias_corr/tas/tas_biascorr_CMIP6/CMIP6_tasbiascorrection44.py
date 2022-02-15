@@ -178,11 +178,11 @@ def calc_corr_fact(obs_month, mod_month):
     p_cor.data = obs.data - p_cor.data
     
     #save data
-    spath = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/corr_fact/'
+    cpath = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/corr_fact/'
     
     
     save_name = 'corrfact' + '_' + tp.gcm(p_cor) 
-    save_path = spath + save_name + '.nc'
+    save_path = cpath + save_name + '.nc'
     iris.save(p_cor, save_path)
     print('Saving ', save_name)
     
@@ -276,7 +276,7 @@ ls.coord('longitude').points = ls.coord('longitude').points - 360
 #tas future
 path = '/nfs/a321/earsch/Tanga/Data/CMIP6/Processed/tas/'
 filenames = glob.glob(path + '*.nc')
-#filenames = [ x for x in filenames if 'CESM' not in x]
+filenames = [ x for x in filenames if 'CESM' not in x]
 tas = iris.cube.CubeList()
 
 for file in filenames:
@@ -284,10 +284,12 @@ for file in filenames:
     tas.append(x)
 
 tas_his = [x for x in tas if x.coord('sim').points[0] == 'historical']
-tas = [x for x in tas if x.coord('sim').points[0] == 'ssp245']
+#tas = [x for x in tas if x.coord('sim').points[0] != 'ssp585']
 #tas = [x for x in tas if x.coord('sim').points[0] != 'historical']
-#tas = [x for x in tas if x.coord('sim').points[0] != 'hist-nat']
+tas = [x for x in tas if x.coord('sim').points[0] == 'hist-nat']
 
+mod_list = [tp.gcm(x) for x in tas]
+tas_his = [x for x in tas_his if tp.gcm(x) in mod_list]
 
     
 #%% Run bias corr function for each historical model seperately
@@ -297,14 +299,12 @@ path = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/'
 
 #regrid obs to cmip6
 obs_regrid, regrid_ls = regrid_obs(cru_tas, ls, tas[0][0])
-nums = [0, 1, 2, 4, 5]
 
-for i in np.arange(13, len(tas_his)):
-    #print(i)
+for i in np.arange(0, len(tas_his)):
     his_cube = tas_his[i]
     mod_list = find_mod(his_cube, tas)
     print(i, tp.gcm(his_cube))
-
+    
     bias_corr(obs_regrid, mod_list, regrid_ls, obs_years, myears, path)
     
 
