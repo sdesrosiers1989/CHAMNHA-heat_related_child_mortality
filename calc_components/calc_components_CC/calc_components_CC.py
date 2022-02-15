@@ -245,7 +245,7 @@ for file in filenames:
     
 path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/future/'
 
-filenames = glob.glob(path + '*PBC_MBC.nc')
+filenames = glob.glob(path + '*PBC2_MBC.nc')
 fut119_list = iris.cube.CubeList()
 fut245_list = iris.cube.CubeList()
 fut585_list = iris.cube.CubeList()
@@ -669,103 +669,41 @@ df_abs['p'] = df_abs['p'] * -1
 df_abs['m'] = df_abs['m'] * -1
 df_abs['e'] = df_abs['e'] * -1
 
+df_abs['scen'] = pd.Categorical(df_abs['scen'], ['ssp119', 'ssp245', 'ssp585'])
+
+
 #load historical
 
 d_abs = pd.read_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/d_abs.csv')
 h_abs = pd.read_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/h_abs.csv')
 
-#%% https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars-with-python-pandas
+#combine historical and future df for plotting
 
-def plot_clustered_stacked(dfall, cols, labels=None, title="",  H=['', "/", '.'], width = 0.25, z = 1, **kwargs):
-    """Given a list of dataframes, with identical columns and index, create a clustered stacked bar plot. 
-labels is a list of the names of the dataframe, used for the legend
-title is a string for the title of the plot
-H is the hatch used for identification of the different dataframe"""
+d_abs = d_abs[d_abs['coeff'] == 0.61]
+d_abs['scen'] = 'hist-nat'
+h_abs = h_abs[h_abs['coeff'] == 0.61]
+h_abs['scen'] = 'historical'
 
-    n_df = len(dfall) # number of dfs
-    n_col = len(dfall[0].columns) #columns
-    n_ind = len(dfall[0].index) #index - groups 
-    axe = plt.subplot(1,1, z)
-    # x = subplot number
+his_df = d_abs.append(h_abs)
+his_df = his_df.drop(columns = ['coeff'])
 
-    for df in dfall : # for each data frame
-        axe = df.plot(kind="bar",
-                      linewidth=0,
-                      stacked=True,
-                      ax=axe,
-                      legend=False,
-                      grid=False,
-                      color = cols,
-                      **kwargs)  # make bar plots
+placeholder = pd.DataFrame(data = {'scen': ['historical', 'hist-nat'] * 3,
+                                   'period': ['2020s', '2030s', '2040s'] * 2,
+                                   'p': [0] * 6,
+                                   'm': [0] * 6,
+                                   'e': [0] * 6})
 
-    h,l = axe.get_legend_handles_labels() # get the handles we want to modify
-    for i in range(0, n_df * n_col, n_col): # len(h) = n_col * n_df
-        for j, pa in enumerate(h[i:i+n_col]):
-           for rect in pa.patches: # for each index
-                rect.set_x(rect.get_x() + width / float(n_df + width) * i / float(n_col))
-                rect.set_hatch(H[int(i / n_col)]) #edited part     
-                rect.set_width(width / float(n_df + width))
+his_df = his_df.append(placeholder)
 
-    axe.set_xticks(np.arange(n_ind))
-    axe.set_xticklabels(df.index, rotation = 0)
+df_all = df_abs.append(his_df)
 
-    return axe
+placeholder = pd.DataFrame(data = {'scen': ['ssp119', 'ssp245', 'ssp585'] * 2,
+                                   'period': ['period2', 'period3'] * 3,
+                                   'p': [0] * 6,
+                                   'm': [0] * 6,
+                                   'e': [0] * 6})
+df_all = df_all.append(placeholder)
 
-
-#%% Plot absoltue mortality
-    
-df_119 = df_abs[df_abs['scen'] == 'ssp119']
-df_245 = df_abs[df_abs['scen'] == 'ssp245']
-df_585 = df_abs[df_abs['scen'] == 'ssp585']
-
-
-fig = plt.figure(figsize=(12,6))
-
-ax = plot_clustered_stacked([df_119, df_245, df_585],labels = ["ssp119", "ssp245", 'ssp585'],
-                            cols = ['#1b9e77', '#7570b3', '#d95f02'])
-                                   
-                                    
-#%%
-ax_list = [ax]
-for a in ax_list:
-    
-    a.set_ylim([-6000, 15000])
-    a.set_xlabel('Period')
-    a.set_xticklabels(['2005 - 2014', '2015 - 2020'])
-    a.axhline(0, c = 'k', linewidth = 0.5)
-
-ax2.set_yticklabels([''] * 6)
-
-ax.set_ylabel('Contribution to change in heat mortality')
-
-
-plt.draw()
-x, y = 0.4,1.05
-
-ax.annotate('Coeff: 0.61', (x, y), xycoords = 'axes fraction',
-             rotation = 0, ha = 'left')
-ax2.annotate('Coeff: 1.00', (x, y), xycoords = 'axes fraction',
-             rotation = 0, ha = 'left')
-
-
-mor_patch = Patch(facecolor='#7570b3')
-pop_patch = Patch(facecolor='#1b9e77')
-e_patch = Patch(facecolor='#d95f02')
-his_patch = Patch(facecolor='grey')
-damip_patch = Patch(facecolor='grey', hatch = '//')
-
-custom_lines = [pop_patch, his_patch, mor_patch, damip_patch, e_patch]
-
-
-ax.legend(custom_lines, ['Population', 'Historical', 'Mortality', 
-                         'Hist-nat', 'Climate'], 
-           bbox_to_anchor=(1.9, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
-
-
-#have to run plt.savefig at same time as create figure to get it to save correctly
-
-#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_abs_total_bothcoeffs.png',
-#            bbox_inches = 'tight', pad_inches = 0.3)
 
 #%% Plot mortality
 
@@ -809,7 +747,8 @@ for i in np.arange(len(scens)):
     pos = positions[i]
     
     scen = scens[i]
-    dat = df_abs[df_abs['scen'] == scen]   
+    dat = df_abs[df_abs['scen'] == scen]  
+    dat = dat.sort_values('scen')
     
     label = scen_labs[i]
     
@@ -897,15 +836,16 @@ for i in np.arange(len(years)):
     
     scen = scens[i]
     dat = df_abs[df_abs['period'] == years[i]]   
+    dat = dat.sort_values('scen')
     
     label = scen_labs[i]
     
     ax.bar(pos, dat['p'], width = barWidth, color = '#1b9e77', label = 'Population',
-           edgecolor = 'k', hatch = hatch_list[i])
+           edgecolor = 'k')
     ax.bar(pos, dat['m'], width = barWidth, color = '#7570b3', label = 'Mortality',
-           edgecolor = 'k', hatch = hatch_list[i])
+           edgecolor = 'k')
     ax.bar(pos, dat['e'], width = barWidth, color = '#d95f02', label = 'Climate',
-           bottom = dat['p'], edgecolor = 'k', hatch = hatch_list[i])
+           bottom = dat['p'], edgecolor = 'k')
     
 
 x_locs = np.append(positions[0], positions[1])
@@ -922,6 +862,28 @@ ax.set_xticklabels(np.tile(p_labs,3))
 ax.axhline(0, c = 'k', linewidth = 0.5)
 
 
+# add scenario labels
+x,y  = 0.10, -0.13
+ax.annotate('SSP119', (x, y), xycoords = 'axes fraction',
+             rotation = 0, ha = 'left')
+ax.annotate('SSP245', (x + 0.35, y), xycoords = 'axes fraction',
+             rotation = 0, ha = 'left')
+ax.annotate('SSP585', (x + 0.70, y), xycoords = 'axes fraction',
+             rotation = 0, ha = 'left')
+
+#lines
+width = .5
+trans = ax.get_xaxis_transform()
+y = -0.07
+x = -0.05
+ax.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
+x = 0.95
+ax.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
+x = 1.95
+ax.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
+
+
+
 ax.set_ylabel('Contribution to change in heat mortality')  
 
 plt.draw()
@@ -931,19 +893,143 @@ plt.draw()
 mor_patch = Patch(facecolor='#7570b3', edgecolor = 'k')
 pop_patch = Patch(facecolor='#1b9e77', edgecolor = 'k')
 e_patch = Patch(facecolor='#d95f02', edgecolor = 'k')
-                
-#ssp119_patch = Patch(facecolor='white', edgecolor = 'k')
-#ssp245_patch = Patch(facecolor='white', hatch = '//', edgecolor = 'k')
-#ssp585_patch = Patch(facecolor='white', hatch = '..', edgecolor = 'k')
+         
+
+custom_lines = [pop_patch, mor_patch, e_patch]
 
 
-custom_lines = [pop_patch, ssp119_patch, mor_patch, ssp245_patch, e_patch, ssp585_patch]
+ax.legend(custom_lines, ['Population', 'Mortality', 'Climate'], 
+           bbox_to_anchor=(0.9, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
 
 
-ax.legend(custom_lines, ['Population', '2020s', 'Mortality', 
-                         '2030s', 'Climate', '2040s'], 
-           bbox_to_anchor=(1.2, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
+#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/cc_components.png',
+#            bbox_inches = 'tight', pad_inches = 0.3)
+
+#%% his + future
+
+import matplotlib
+fs = 14
+matplotlib.rcParams.update({'font.size': fs})
+
+scens = ['hist-nat', 'historical', 'ssp119', 'ssp245', 'ssp585']
+years = ['period2', 'period3', '2020s', '2030s', '2040s']
+
+#sort scens ind ataframe so plot in correct order
+df_all['scen'] = pd.Categorical(df_all['scen'], scens)
+
+fig = plt.figure(figsize=(12,6))
+ax = fig.add_subplot(1,1,1)
 
 
-#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/totalrate_mort_coeff061_range_largefont.png',
+barWidth = 0.12
+
+#ax1.set_xlim(-0.1, 0.7)
+
+
+# Set position of bar on X axis (position for each rcm bar within each gcm category)
+n = len(scens)
+positions = []
+r1 = np.arange(n)
+r1 = r1 * 0.5 # decrease space between groups
+positions.append(r1)
+
+for i in np.arange(1,len(years)):
+    next_pos = [x + barWidth for x in positions[i-1]]
+    positions.append(next_pos)
+ 
+#set colors
+hatch_list = ['', '//', '..']
+scen_labs = ['Hist-nat', 'Historical', 'SSP119', 'SSP245', 'SSP585']    
+p_labs = ['P1', 'P2', '20s', '30s', '40s']
+
+lw = 2.0
+for i in np.arange(len(years)):
+    
+    pos = positions[i]
+    
+    #scen = scens[i]
+    dat = df_all[df_all['period'] == years[i]]   
+    dat = dat.sort_values('scen')
+    
+    #label = scen_labs[i]
+    
+    plt.bar(pos, dat['p'], width = barWidth, color = '#1b9e77', label = 'Population',
+           edgecolor = 'k')
+    plt.bar(pos, dat['m'], width = barWidth, color = '#7570b3', label = 'Mortality',
+           edgecolor = 'k')
+    plt.bar(pos, dat['e'], width = barWidth, color = '#d95f02', label = 'Climate',
+           bottom = dat['p'], edgecolor = 'k')
+    
+
+x_locs = [-0.02, 0.16, 0.48, 0.68,
+          1.24, 1.36, 1.48,
+          1.74, 1.86, 1.98,
+          2.24, 2.36, 2.48]
+
+
+ax.set_xticks(np.sort(x_locs))
+ax.set_xticklabels(['  2005-\n2014', '  2015-\n2020', 
+                    '  2005-\n2014', '  2015-\n2020', 
+                    '20s', '30s', '40s',
+                    '20s', '30s', '40s',
+                    '20s', '30s', '40s'], fontsize = 12)
+
+
+
+ax.axhline(0, c = 'k', linewidth = 0.5)
+
+
+y = -0.19
+ax.annotate(scen_labs[0], (0.06, y), xycoords = 'axes fraction',
+                 rotation = 0, ha = 'left')
+ax.annotate(scen_labs[1], (0.225, y), xycoords = 'axes fraction',
+                 rotation = 0, ha = 'left')
+
+# add scenario labels
+x,y  = 0.50, -0.19
+for i in np.arange(2, len(scen_labs)):
+    ax.annotate(scen_labs[i], (x, y), xycoords = 'axes fraction',
+                 rotation = 0, ha = 'left')
+    x += 0.175
+
+
+
+#lines
+width = .32
+trans = ax.get_xaxis_transform()
+y = -0.13
+x = -0.08
+ax.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
+x = 0.42
+ax.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
+
+width = .3
+x = 1.2
+ax.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
+x = 1.7
+ax.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
+x = 2.2
+ax.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False)
+
+
+
+ax.set_ylabel('Contribution to change in heat mortality')  
+
+plt.draw()
+
+#create legend
+
+mor_patch = Patch(facecolor='#7570b3', edgecolor = 'k')
+pop_patch = Patch(facecolor='#1b9e77', edgecolor = 'k')
+e_patch = Patch(facecolor='#d95f02', edgecolor = 'k')
+         
+
+custom_lines = [pop_patch, mor_patch, e_patch]
+
+
+ax.legend(custom_lines, ['Population', 'Mortality', 'Climate'], 
+           bbox_to_anchor=(0.8, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
+
+
+#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/cc_components_withhis.png',
 #            bbox_inches = 'tight', pad_inches = 0.3)
