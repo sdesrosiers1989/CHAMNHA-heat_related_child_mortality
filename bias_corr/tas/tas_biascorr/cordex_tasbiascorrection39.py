@@ -219,33 +219,8 @@ for file in filenames:
 #    x = iris.load_cube(file,  tas_constraint, callback = add_att_from_filename_tas45)
 #    tas.append(x)
 
-#tasmax
-path = '/nfs/a321/earsch/Tanga/Data/CORDEX/Processed/tasmax/'
-filenames = glob.glob(path + '*.nc')
-tasmax = iris.cube.CubeList()
-tasmax_constraint = iris.Constraint(cube_func=lambda cube: cube.var_name == 'tasmax')
-tasmax2_constraint = iris.Constraint(cube_func=lambda cube: cube.var_name == 'd03236')
-for file in filenames:
-    if ('p25' in file) or ('cp4' in file):
-        x = iris.load_cube(file,  tasmax2_constraint, callback = add_att_from_filename_tasmax)
-    else:
-        x = iris.load_cube(file,  tasmax_constraint, callback = add_att_from_filename_tasmax)
-    tasmax.append(x)
-    
-#tasmin
-path = '/nfs/a321/earsch/Tanga/Data/CORDEX/Processed/tasmin/'
-filenames = glob.glob(path + '*.nc')
-tasmin = iris.cube.CubeList()
-tasmin_constraint = iris.Constraint(cube_func=lambda cube: cube.var_name == 'tasmin')
-tasmin2_constraint = iris.Constraint(cube_func=lambda cube: cube.var_name == 'd03236')
-for file in filenames:
-    if ('p25' in file) or ('cp4' in file):
-        x = iris.load_cube(file,  tasmin2_constraint, callback = add_att_from_filename_tasmax)
-    else:
-        x = iris.load_cube(file,  tasmin_constraint, callback = add_att_from_filename_tasmax)
-    tasmin.append(x)
-    
-tas_mod = [tas, tasmax, tasmin]
+
+
 tas_mod = [tas]
 
 #masks
@@ -258,14 +233,9 @@ ls.coord('longitude').points = ls.coord('longitude').points - 360
 # Get CRU
 cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
                     iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
-cru_tmin = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmn/*.nc',
-                    iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmn'))
-cru_tmax = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmx/*.nc',
-                    iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmx'))
 
 cru_tas = cru_tas.concatenate_cube()
-cru_tmin = cru_tmin.concatenate_cube()
-cru_tmax = cru_tmax.concatenate_cube()
+
 
 cru = [cru_tas]##, cru_tmin, cru_tmax]
 
