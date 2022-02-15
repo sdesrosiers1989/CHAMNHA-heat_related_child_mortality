@@ -41,10 +41,6 @@ proj = ccrs.PlateCarree(central_longitude = 38)
 
 #%% Import model data  on native grids
 
-#Import p25 to get bounds - p25, cp4 domains slightly smaller than cordex
-
-p25_bounds = iris.load('/nfs/a277/IMPALA/data/25km/d03236/*mean*')
-p25_bounds = p25_bounds[0]
 
 #CMIP6 data (tas = near surface air temperature, which is between 1.5 to 10m)
 tas_constraint = iris.Constraint(cube_func=lambda cube: cube.var_name == 'tas')
@@ -118,16 +114,20 @@ for cube in goodyears:
 
 #%% Regrid first so can do area-weighted, then extract
 
-p25_bounds.coord('latitude').guess_bounds()
-p25_bounds.coord('longitude').guess_bounds()
+min_lat = -40.0
+max_lat = 40.0
 
-min_lat = p25_bounds.coord('latitude').bounds[0][0]
-max_lat = p25_bounds.coord('latitude').bounds[-1][1]
-min_lon = p25_bounds.coord('longitude').bounds[0][0] - 360.0
-max_lon = p25_bounds.coord('longitude').bounds[-1][1] - 360.0
-p25_sub = iris.Constraint(latitude = lambda cell: min_lat < cell < max_lat,
-                                     longitude = lambda cell: min_lon < cell < max_lon)
+p25_sub = iris.Constraint(latitude = lambda cell: min_lat < cell < max_lat)
  
+base = mpi_hr_hist[0][0]
+#base.coord('longitude').guess_bounds()
+#base.coord('latitude').guess_bounds()
+base = base.extract(p25_sub)
+
+base_subset = base.intersection(longitude=(-25, 60))
+#because ciruclar coords have a split in Africa - can't extract using constraint
+
+
 for cube in goodyears:
     try:
         cube.coord('longitude').guess_bounds()
@@ -136,16 +136,10 @@ for cube in goodyears:
         print('Has bounds.')
         pass
 
-base = mpi_hr_hist[0]
-#base.coord('longitude').guess_bounds()
-#base.coord('latitude').guess_bounds()
-base = base.extract(p25_sub)
-
-
 regridded = iris.cube.CubeList()
 
 for cube in goodyears:
-    x = cube.regrid(base, iris.analysis.AreaWeighted())
+    x = cube.regrid(base_subset, iris.analysis.AreaWeighted())
     regridded.append(x)
 
 
