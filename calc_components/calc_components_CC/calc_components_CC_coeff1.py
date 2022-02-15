@@ -1076,7 +1076,7 @@ ax2.plot([x, x + width], [y, y], color = 'k', transform = trans, clip_on = False
 
 
 ##
-ax1.set_ylabel('Contribution to change in heat mortality \n (number of deaths per year)')  
+ax1.set_ylabel('Contribution to change in \n annual heat-related child mortality (under 5)')  
 
 #
 ax1.annotate('A)', (0.01, 1.02), xycoords = 'axes fraction',
@@ -1102,5 +1102,5 @@ ax.legend(custom_lines, ['Population growth', 'All-cause mortality rate declines
            bbox_to_anchor=(0.95, -0.25),ncol=2,frameon = False, handletextpad = 0.5)
 
 
-#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/cc_components_withhis_4_net_coeff1.png',
+#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/FigS1_cc_components_withhis_4_net_coeff1.png',
 #            bbox_inches = 'tight', pad_inches = 0.3)
