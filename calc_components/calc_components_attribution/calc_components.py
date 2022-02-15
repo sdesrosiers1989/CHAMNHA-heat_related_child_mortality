@@ -268,7 +268,6 @@ pop_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr
 pop_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010_regrid.nc')
 pop_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
 
-pop_2015 = pop_2010 + ((pop_2019 - pop_2010) / 2)
 
 
 #daily mortality
@@ -276,11 +275,10 @@ dmor_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/proces
 dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2010_regrid.nc')
 dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2019_regrid.nc')
 
-dmor_2015 = dmor_2010 + ((dmor_2019 - dmor_2010) / 2)
 
 
-pop_list = [pop_2000, pop_2010, pop_2015, pop_2019]
-mor_list = [dmor_2000, dmor_2010, dmor_2015, dmor_2019]
+pop_list = [pop_2000, pop_2010, pop_2019]
+mor_list = [dmor_2000, dmor_2010, dmor_2019]
 
 #%% actual mortality
 
@@ -397,42 +395,33 @@ for i in np.arange(len(pop_list)):
     
 #%% get mdoels into year lists
         #will compare 2011 - 2020 to 1995 - 2004
+        # but split 2011 - 2020 into 2 peroids (2011 - 2014, 2015 - 2020), using actual pop/mor data
+        # used to calculate mortality
 
-def split_years(in_list):
-    hyears = [np.arange(1995, 2005),
-              np.arange(2011, 2021)]
+hyears = [np.arange(1995, 2005),
+          np.arange(2011, 2015),
+          np.arange(2015, 2021)]
+
+def split_years(in_list, hyears = hyears):
 
     his_years = iris.cube.CubeList()
     
-    mods = np.unique([tp.gcm(x) for x in in_list])
     
     for year_group in hyears:
         if 1995 in year_group:
             h_list = [x for x in in_list if x.coord('year').points[0] == 1995]
             
-        else:
-            #2011 - 2020 are split over 2 cube lists
+        elif 2011 in year_group:
             h_list0 = [x for x in in_list if x.coord('year').points[0] == 2005]
-            h_list1 = [x for x in in_list if x.coord('year').points[0] == 2015]
-            h_list = iris.cube.CubeList()
             
-            for mod in mods:
-                h_list0m = [y for y in h_list0 if tp.gcm(y) == mod][0]
-                h_list1m = [y for y in h_list1 if tp.gcm(y) == mod]
-                
-                if len(h_list1m) > 0:
-                    #future mods only don't have 2015 - 2020 historical period, as that's actually climate change
-                    h_list1m = h_list1m[0]
-                    x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
-                    x1 = h_list1m.extract(iris.Constraint(year = lambda cell: cell <= 2020))
-                    
-                    x = iris.cube.CubeList([x0,x1])
-                    x = x.concatenate_cube()
-                    
-                    h_list.append(x)
-                else:
-                    x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
-                    h_list.append(x0)
+            h_list = iris.cube.CubeList()
+            for cube in h_list0:
+                x = cube.extract(iris.Constraint(year = lambda cell: 2011 <= cell < 2015))
+                h_list.append(x)
+               
+        elif 2015 in year_group:
+            h_list = [x for x in in_list if x.coord('year').points[0] == 2015]
+            
             
         h_mean_list = iris.cube.CubeList()
         for cube in h_list:
@@ -453,40 +442,27 @@ his_years1 = split_years(hist_list1)
     
 #%% mortality years
 
-def split_years_mor(in_list):
-    hyears = [np.arange(1995, 2005),
-              np.arange(2011, 2021)]
+def split_years_mor(in_list, hyears = hyears):
+
     his_mor_years = iris.cube.CubeList()
-    
-    mods = np.unique([tp.gcm(x) for x in in_list])
-    
+        
     for year_group in hyears:
         if 1995 in year_group:
             h_list = [x for x in in_list if x.coord('year').points[0] == 1995]
             
-        else:
+        elif 2011 in year_group:
             #2011 - 2020 are split over 2 cube lists
             h_list0 = [x for x in in_list if x.coord('year').points[0] == 2005]
-            h_list1 = [x for x in in_list if x.coord('year').points[0] == 2015]
-            h_list = iris.cube.CubeList()
             
-            for mod in mods:
-                h_list0m = [y for y in h_list0 if tp.gcm(y) == mod][0]
-                h_list1m = [y for y in h_list1 if tp.gcm(y) == mod]
-                
-                if len(h_list1m) > 0:
-                    #future mods only don't have 2015 - 2020 historical period, as that's actually climate change
-                    h_list1m = h_list1m[0]
-                    x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
-                    x1 = h_list1m.extract(iris.Constraint(year = lambda cell: cell <= 2020))
-                    
-                    x = iris.cube.CubeList([x0,x1])
-                    x = x.concatenate_cube()
-                    
-                    h_list.append(x)
-                else:
-                    x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
-                    h_list.append(x0)
+            h_list = iris.cube.CubeList()
+            for cube in h_list0:
+                x = cube.extract(iris.Constraint(year = lambda cell: 2011 <= cell < 2015))
+                h_list.append(x)
+               
+        elif 2015 in year_group:
+           #2011 - 2020 are split over 2 cube lists
+            h_list = [x for x in in_list if x.coord('year').points[0] == 2015]
+            
             
         his_mor_years.append(h_list)
     return his_mor_years
@@ -501,24 +477,40 @@ his_mor_years1 = split_years_mor(his_mor1)
 
 
 #%% Cause of difference between Histnat T1 and T2?
-#T1= 1995 - 2004
-#T2 = 2011 - 2020    
-
-
-p_inlist = [pop_ratio_list[0], pop_ratio_list[2]]
-m_inlist = [dmor_2000, dmor_2015]
+#T1 = 1995 - 2004
+#T2 = 2011 - 2014
+#T3 = 2015 - 2020
+    
+p_inlist = [pop_ratio_list[0], pop_ratio_list[1]]
+m_inlist = [dmor_2000, dmor_2010]
 e_inlist = [damip_years[0], damip_years[1]]
 e_his_inlist = [his_years[0], his_years[1]]
 
 p_effect, m_effect, e_effect, plist, mlist, elist = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
 #his T2 vs T1
 p_effect_h, m_effect_h, e_effect_h, plist_h, mlist_h, elist_h = calc_comp(p_inlist, m_inlist, e_his_inlist, return_list = True)
- 
+  
+#hist nat T3 vs T1
+p_inlist = [pop_ratio_list[0], pop_ratio_list[2]]
+m_inlist = [dmor_2000, dmor_2019]
+e_inlist = [damip_years[0], damip_years[2]]
+
+p_effect3, m_effect3, e_effect3, plist3, mlist3, elist3 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
+  
+#hist nat T3 vs T1
+p_inlist = [pop_ratio_list[0], pop_ratio_list[2]]
+m_inlist = [dmor_2000, dmor_2019]
+e_inlist = [damip_years[0], damip_years[2]]
+e_his_inlist = [his_years[0], his_years[2]]
+
+p_effect3, m_effect3, e_effect3, plist3, mlist3, elist3 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
+p_effect_h3, m_effect_h3, e_effect_h3, plist_h3, mlist_h3, elist_h3 = calc_comp(p_inlist, m_inlist, e_his_inlist, return_list = True)
+
 
 #coeff 1
    
-p_inlist = [pop_ratio_list[0], pop_ratio_list[2]]
-m_inlist = [dmor_2000, dmor_2015]
+p_inlist = [pop_ratio_list[0], pop_ratio_list[1]]
+m_inlist = [dmor_2000, dmor_2010]
 e_inlist = [damip_years1[0], damip_years1[1]]
 e_his_inlist = [his_years1[0], his_years1[1]]
 
@@ -526,6 +518,21 @@ p_effect1, m_effect1, e_effect1, plist1, mlist1, elist1 = calc_comp(p_inlist, m_
 #his T2 vs T1
 p_effect_h1, m_effect_h1, e_effect_h1, plist_h1, mlist_h1, elist_h1 = calc_comp(p_inlist, m_inlist, e_his_inlist, return_list = True)
   
+#hist nat T3 vs T1
+p_inlist = [pop_ratio_list[0], pop_ratio_list[2]]
+m_inlist = [dmor_2000, dmor_2019]
+e_inlist = [damip_years1[0], damip_years1[2]]
+
+p_effect31, m_effect31, e_effect31, plist31, mlist31, elist31 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
+  
+#hist nat T3 vs T1
+p_inlist = [pop_ratio_list[0], pop_ratio_list[2]]
+m_inlist = [dmor_2000, dmor_2019]
+e_inlist = [damip_years1[0], damip_years1[2]]
+e_his_inlist = [his_years1[0], his_years1[2]]
+
+p_effect31, m_effect31, e_effect31, plist31, mlist31, elist31 = calc_comp(p_inlist, m_inlist, e_inlist, return_list = True)
+p_effect_h31, m_effect_h31, e_effect_h31, plist_h31, mlist_h31, elist_h31 = calc_comp(p_inlist, m_inlist, e_his_inlist, return_list = True)
 
   
 #%% Check against actual dif
@@ -533,8 +540,11 @@ p_effect_h1, m_effect_h1, e_effect_h1, plist_h1, mlist_h1, elist_h1 = calc_comp(
 #1995 - 2004: pop and mortality the same (onyl due to climate)
 period1 = damip_mor_years[0]
 period2 = damip_mor_years[1]
+period3 = damip_mor_years[2]
+
 period1 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period1]
 period2 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period2]
+period3 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period3]
 
 
 dif, dif_per = find_dif(period1, period2)
@@ -544,14 +554,23 @@ ens_perdif = ens_mean(dif_per)
 
 period1_ens = ens_mean(period1)
 period2_ens = ens_mean(period2)
+period3_ens = ens_mean(period3)
 
+#hist ant T3 s T1 dif
+dif3, dif_per3 = find_dif(period1, period3)
+
+ens_dif3 = ens_mean(dif3)
+ens_perdif3 = ens_mean(dif_per3)
 
 #historical difs
 
 period1_h = his_mor_years[0]
 period2_h = his_mor_years[1]
+period3_h = his_mor_years[2]
 period1_h = [x.collapsed(['time'], iris.analysis.MEAN) for x in period1_h]
 period2_h = [x.collapsed(['time'], iris.analysis.MEAN) for x in period2_h]
+period3_h = [x.collapsed(['time'], iris.analysis.MEAN) for x in period3_h]
+
 
 dif_h, dif_per_h = find_dif(period1_h, period2_h)
 
@@ -561,6 +580,12 @@ ens_perdif_h = ens_mean(dif_per_h)
 period1_ens_h = ens_mean(period1_h)
 period2_ens_h = ens_mean(period2_h)
 
+#hist ant T3 s T1 dif
+dif_h3, dif_per_h3 = find_dif(period1_h, period3_h)
+
+ens_dif_h3 = ens_mean(dif_h3)
+ens_perdif_h3 = ens_mean(dif_per_h3)
+
 
 # coeff 1
 
@@ -568,8 +593,11 @@ period2_ens_h = ens_mean(period2_h)
 #1995 - 2004: pop and mortality the same (onyl due to climate)
 period11 = damip_mor_years1[0]
 period21 = damip_mor_years1[1]
+period31 = damip_mor_years1[2]
+
 period11 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period11]
 period21 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period21]
+period31 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period31]
 
 dif1, dif_per1 = find_dif(period11, period21)
 
@@ -578,14 +606,23 @@ ens_perdif1 = ens_mean(dif_per1)
 
 period1_ens1 = ens_mean(period11)
 period2_ens1 = ens_mean(period21)
+period3_ens1 = ens_mean(period31)
 
+#hist ant T3 s T1 dif
+dif31, dif_per31 = find_dif(period11, period31)
+
+ens_dif31 = ens_mean(dif31)
+ens_perdif31 = ens_mean(dif_per31)
 
 #historical difs
 
 period1_h1 = his_mor_years1[0]
 period2_h1 = his_mor_years1[1]
+period3_h1 = his_mor_years1[2]
+
 period1_h1 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period1_h1]
 period2_h1 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period2_h1]
+period3_h1 = [x.collapsed(['time'], iris.analysis.MEAN) for x in period3_h1]
 
 dif_h1, dif_per_h1 = find_dif(period1_h1, period2_h1)
 
@@ -594,7 +631,14 @@ ens_perdif_h1 = ens_mean(dif_per_h1)
 
 period1_ens_h1 = ens_mean(period1_h1)
 period2_ens_h1 = ens_mean(period2_h1)
+period3_ens_h1 = ens_mean(period3_h1)
 
+
+#hist ant T3 s T1 dif
+dif_h31, dif_per_h31 = find_dif(period1_h1, period3_h1)
+
+ens_dif_h31 = ens_mean(dif_h31)
+ens_perdif_h31 = ens_mean(dif_per_h31)
 
 
 #%% Check decomp
@@ -668,33 +712,53 @@ def cube_to_frame(p_effect_list, m_effect_list, e_effect_list, total_dif, period
 
 
 damip_p2 = cube_to_frame(plist, mlist, elist, dif, 'period2', '0.61')
+damip_p3 = cube_to_frame(plist3, mlist3, elist3, dif3, 'period3', '0.61')
 his_p2 = cube_to_frame(plist_h, mlist_h, elist_h, dif_h, 'period2', '0.61')
+his_p3 = cube_to_frame(plist_h3, mlist_h3, elist_h3, dif_h3, 'period3', '0.61')
 
 damip_p21 = cube_to_frame(plist1, mlist1, elist1, dif1, 'period2', '1.0')
+damip_p31 = cube_to_frame(plist31, mlist31, elist31, dif31, 'period3', '1.0')
 his_p21 = cube_to_frame(plist_h1, mlist_h1, elist_h1, dif_h1, 'period2', '1.0')
+his_p31 = cube_to_frame(plist_h31, mlist_h31, elist_h31, dif_h31, 'period3', '1.0')
+
+#combine period1 and period2
+def comb_periods(p2, p3):
+
+    df = pd.merge(p2, p3, on = ['coeff', 'model'])
+    # take mean as values are annuala verages
+    df['p'] = (df['p_x'] + df['p_y']) / 2
+    df['e'] = (df['e_x'] + df['e_y']) / 2
+    df['m'] = (df['m_x'] + df['m_y']) / 2
+    
+    return df
+
+damip = comb_periods(damip_p2, damip_p3)
+damip1 = comb_periods(damip_p21, damip_p31)
+damip = damip.append(damip1)
+
+his = comb_periods(his_p2, his_p3)
+his1 = comb_periods(his_p21, his_p31)
+his = his.append(his1)
 
 
-damip = damip_p2.append(damip_p21)
-his = his_p2.append(his_p21)
+damip_agg = damip.groupby(['coeff'], as_index = True).mean()
+his_agg = his.groupby(['coeff'], as_index = True).mean()
 
+cols_keep = ['p', 'e', 'm']
+cols_drop = damip_agg.columns
+cols_drop = [x for x in cols_drop if x not in cols_keep]
 
-damip_agg = damip.groupby(['period', 'coeff'], as_index = True).mean()
-his_agg = his.groupby(['period', 'coeff'], as_index = True).mean()
-
-d_per = damip_agg.drop(columns = ['p' , 'm', 'e', 'total'])
-h_per = his_agg.drop(columns = ['p' , 'm', 'e', 'total'])
-
-d_abs = damip_agg.drop(columns = ['p_per' , 'm_per', 'e_per', 'total'])
-h_abs = his_agg.drop(columns = ['p_per' , 'm_per', 'e_per', 'total'])
+d_abs = damip_agg.drop(columns = cols_drop)
+h_abs = his_agg.drop(columns = cols_drop)
 
 #otherwise looks like population growth makes mortlaity go down
 d_abs = d_abs * -1
 h_abs = h_abs * -1
 
 
-#d_abs.to_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/d_abs.csv')
-#h_abs.to_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/h_abs.csv')
-
+#d_abs.to_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/d_abs_2.csv')
+#h_abs.to_csv('/nfs/see-fs-02_users/earsch/Documents/Leeds/CHAMNHA/output_csvs/h_abs_2.csv')
+#
 #%% https://stackoverflow.com/questions/22787209/how-to-have-clusters-of-stacked-bars-with-python-pandas
 
 def plot_clustered_stacked(dfall, cols, labels=None, title="",  H="/", width = 0.5, z = 1, **kwargs):
