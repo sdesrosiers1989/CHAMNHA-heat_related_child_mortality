@@ -177,6 +177,15 @@ def calc_corr_fact(obs_month, mod_month):
     # in very dry areas.
     p_cor.data = obs.data - p_cor.data
     
+    #save data
+    spath = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/corr_fact/'
+    
+    
+    save_name = 'corrfact' + '_' + tp.gcm(p_cor) 
+    save_path = spath + save_name + '.nc'
+    iris.save(p_cor, save_path)
+    print('Saving ', save_name)
+    
     return p_cor
 
 def apply_corr(p_cor, mod_list, path, end):
@@ -226,7 +235,7 @@ def bias_corr(obs_regrid, mod_list, ls_regrid, obs_years, myears, path):
     p_cor = calc_corr_fact(cru_month, tas_months[0])
     
     print('Applying correction factors..')
-    apply_corr(p_cor, tas_his, path, end = 'his')
+    #apply_corr(p_cor, tas_his, path, end = 'his')
     apply_corr(p_cor, tas_future, path, end = 'end')
 
 #%%
@@ -275,8 +284,9 @@ for file in filenames:
     tas.append(x)
 
 tas_his = [x for x in tas if x.coord('sim').points[0] == 'historical']
-tas = [x for x in tas if x.coord('sim').points[0] == 'ssp585']
-
+tas = [x for x in tas if x.coord('sim').points[0] == 'ssp245']
+#tas = [x for x in tas if x.coord('sim').points[0] != 'historical']
+#tas = [x for x in tas if x.coord('sim').points[0] != 'hist-nat']
 
 
     
@@ -287,12 +297,14 @@ path = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/'
 
 #regrid obs to cmip6
 obs_regrid, regrid_ls = regrid_obs(cru_tas, ls, tas[0][0])
+nums = [0, 1, 2, 4, 5]
 
-for i in np.arange(22, 24):
+for i in np.arange(13, len(tas_his)):
+    #print(i)
     his_cube = tas_his[i]
     mod_list = find_mod(his_cube, tas)
     print(i, tp.gcm(his_cube))
-    
+
     bias_corr(obs_regrid, mod_list, regrid_ls, obs_years, myears, path)
     
 
