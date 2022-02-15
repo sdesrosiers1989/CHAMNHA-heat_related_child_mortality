@@ -183,8 +183,8 @@ def calc_corr_fact(obs_month, mod_month):
     
     save_name = 'corrfact' + '_' + tp.gcm(p_cor) 
     save_path = cpath + save_name + '.nc'
-    iris.save(p_cor, save_path)
-    print('Saving ', save_name)
+    #iris.save(p_cor, save_path)
+    #print('Saving ', save_name)
     
     return p_cor
 
@@ -286,7 +286,7 @@ for file in filenames:
 tas_his = [x for x in tas if x.coord('sim').points[0] == 'historical']
 #tas = [x for x in tas if x.coord('sim').points[0] != 'ssp585']
 #tas = [x for x in tas if x.coord('sim').points[0] != 'historical']
-tas = [x for x in tas if x.coord('sim').points[0] == 'hist-nat']
+tas = [x for x in tas if x.coord('sim').points[0] == 'ssp119']
 
 mod_list = [tp.gcm(x) for x in tas]
 tas_his = [x for x in tas_his if tp.gcm(x) in mod_list]
@@ -300,7 +300,7 @@ path = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/'
 #regrid obs to cmip6
 obs_regrid, regrid_ls = regrid_obs(cru_tas, ls, tas[0][0])
 
-for i in np.arange(0, len(tas_his)):
+for i in np.arange(10, len(tas_his)):
     his_cube = tas_his[i]
     mod_list = find_mod(his_cube, tas)
     print(i, tp.gcm(his_cube))
