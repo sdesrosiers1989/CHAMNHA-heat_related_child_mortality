@@ -83,7 +83,7 @@ def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort, coeff):
         #sum total heat deaths
         out_sum = output.collapsed('time', iris.analysis.SUM)
         year_output.append(out_sum)
-        e_mean = e_output.collapsed('time', iris.analysis.MEAN)
+        e_mean = e_output.collapsed('time', iris.analysis.SUM)
         e_list.append(e_mean)
         
     #calculate annual heat deaths
