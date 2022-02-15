@@ -29,6 +29,8 @@ import cartopy.crs as ccrs
 
 import glob
 
+import copy
+
 import numpy as np
 
 import itertools
@@ -116,18 +118,28 @@ for item in cmip6_cubes:
         except:
             print('no height')
     if item[0].attributes['source_id'] == 'CESM2-WACCM':
+        base = item[1]
         item[0] = add_time_dim(item[0])
         item[9] = add_time_dim(item[9])
-        base = item[1]
-        item[0] = item[0].regrid(base, iris.analysis.AreaWeighted())
-        item[9] = item[9].regrid(base, iris.analysis.AreaWeighted())
         
-        #for i in np.arange(len(item:
-        #   base = item[1]
-        #   i = i.regrid(base, iris.analysis.AreaWeighted())
-        item[0] = add_lat_lon_dim(item[0], base)
-        item[9] = add_lat_lon_dim(item[9], base)
-           
+        #item[0] = add_lat_lon_dim(item[0], base)
+        #item[9] = add_lat_lon_dim(item[9], base)
+        
+        #item[0] = item[0].regrid(base, iris.analysis.AreaWeighted())
+        #item[9] = item[9].regrid(base, iris.analysis.AreaWeighted())
+        
+        base_copy = copy.deepcopy(base)
+        base_copy.data = item[0].data
+        base_copy.coord('time').points = item[0].coord('time').points
+        item[0] = base_copy
+        
+        base_copy = copy.deepcopy(base)
+        base_copy.data = item[9].data
+        base_copy.coord('time').points = item[9].coord('time').points
+        item[9] = base_copy
+    
+
+            
     if item[0].attributes['source_id'] == 'CESM2':
         item[0] = add_time_dim(item[0])
         base = item[1]
@@ -142,7 +154,31 @@ for item in cmip6_cubes:
     x.coord('latitude').coord_system = cs
     cmip6_cat.append(x)
 
-    
+def coord_diffs(coord1, coord2):
+    """
+    Print which aspects of two coords do not match.
+    """
+    for attr in ['standard_name', 'long_name', 'var_name', 'units',
+                 'coord_system']:
+        if getattr(coord1, attr) != getattr(coord2, attr):
+            print('coord1 {}: {}'.format(attr, getattr(coord1, attr)))
+            print('coord2 {}: {}'.format(attr, getattr(coord2, attr)))
+           
+    common_keys = set(coord1.attributes).intersection(coord2.attributes)
+    for key in set(coord1.attributes) - common_keys:
+        print('attribute only on coord1: {}'.format(key))
+    for key in set(coord2.attributes) - common_keys:
+        print('attribute only on coord2: {}'.format(key))        
+    for key in common_keys:
+        if np.any(coord1.attributes[key] != coord2.attributes[key]):
+            print('attributes differ: {}'.format(key))
+           
+    if np.any(coord1.points != coord2.points):
+        print('points differ')
+    if np.any(coord1.bounds != coord2.bounds):
+        print('bounds differ')
+
+
 # get data of interest only, 1971 - 1999, and 2071 - 2099
     #drop 2099 from HadGEM2 CCLM4 rcp8.5 as not full year
 goodyears = []
