@@ -469,44 +469,13 @@ H is the hatch used for identification of the different dataframe"""
     #axe.add_artist(l1)
     return axe
 
-# create fake dataframes
-df1 = pd.DataFrame(np.random.rand(4, 5),
-                   index=["A", "B", "C", "D"],
-                   columns=["I", "J", "K", "L", "M"])
-df2 = pd.DataFrame(np.random.rand(4, 5),
-                   index=["A", "B", "C", "D"],
-                   columns=["I", "J", "K", "L", "M"])
-df3 = pd.DataFrame(np.random.rand(4, 5),
-                   index=["A", "B", "C", "D"], 
-                   columns=["I", "J", "K", "L", "M"])
 
-# Then, just call :
-plot_clustered_stacked([df1, df2],labels = ["df1", "df2"], cols = ['black', 'green', 'blue'])
-
-#%% plot
-
-labels = ['Period 2', 'Period 3', '6', '7']
-mor_means = [his_agg['m_per'], damip_agg['m_per'], his_agg3['m_per'], damip_agg3['m_per']]
-pop_means = [his_agg['p_per'], damip_agg['p_per'], his_agg3['p_per'], damip_agg3['p_per']]
-e_means = [his_agg['e_per'], damip_agg['e_per'], his_agg3['e_per'], damip_agg3['e_per']]
-width  = 0.35
-
-plt.bar(labels, mor_means, width, label = 'Mortality')
-plt.bar(labels, pop_means, width, label = 'Population')
-plt.bar(labels, e_means, width, label = 'Climate')
-
-plt.legend()
-
-#%%
-
-plot_clustered_stacked([h_per, d_per],["his", "damip"])
-
-#%%
+#%% Plot absoltue mortality
 ax = plot_clustered_stacked([h_abs, d_abs],labels = ["his", "damip"], cols = ['#1b9e77', '#7570b3', '#d95f02'])
 
 plt.xlabel('Period')
 
-ax.set_ylabel('Mean annual heat mortality per gridcell')
+ax.set_ylabel('Contribution to change in heat mortality')
 ax.set_xticklabels(['2005 - 2014', '2015 - 2020'])
 
 ax.axhline(0, c = 'k', linewidth = 0.5)
@@ -527,97 +496,36 @@ ax.legend(custom_lines, ['Population', 'Historical', 'Mortality',
            bbox_to_anchor=(0.9, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
 
 
+#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_abs.png',
+#            bbox_inches = 'tight', pad_inches = 0.3)
+
+#%% Plot per mortality
 
 
-#%%
+ax = plot_clustered_stacked([h_per, d_per],labels = ["his", "damip"], cols = ['#1b9e77', '#7570b3', '#d95f02'])
+
+plt.xlabel('Period')
+
+ax.set_ylabel('% contribution to change in heat mortality')
+ax.set_xticklabels(['2005 - 2014', '2015 - 2020'])
+
+ax.axhline(0, c = 'k', linewidth = 0.5)
 
 
-fig = plt.figure(figsize=(6,6))
-ax = fig.add_subplot(1,1,1)
 
-barWidth = 0.1
+mor_patch = Patch(facecolor='#7570b3')
+pop_patch = Patch(facecolor='#1b9e77')
+e_patch = Patch(facecolor='#d95f02')
+his_patch = Patch(facecolor='grey')
+damip_patch = Patch(facecolor='grey', hatch = '//')
 
-# Set position of bar on X axis (position for each rcm bar within each gcm category)
-positions = []
-r1 = np.arange(2)
-positions.append(r1)
-
-periods = ['Period2', 'Period3']
-scen_dat = [h_abs, d_abs]
-
-for i in np.arange(1,len(periods)):
-    next_pos = [x + barWidth for x in positions[i-1]]
-    positions.append(next_pos)
- 
-#set colors
-cols = ['green', 'blue', 'red']
-var_name = ['m', 'p', 'e']
-var_label = ['Mortality', 'Population', 'Climate']
-scen_label = ['hst', 'hist-nat']
-
-lw = 2.0
+custom_lines = [pop_patch, his_patch, mor_patch, damip_patch, e_patch]
 
 
-# Make the plot
-for i in np.arange(len(scen_dat)):
-    pos = positions[i]
-    dat = scen_dat[i]
-    label = scen_label
-    plt.bar(pos, [5, 10], width = barWidth, color = cols[i], label = label)
-    plt.bar(pos, [5, 10], width = barWidth, color = cols[2], label = label)
-    
-    
-    #%%
-#ax.set_ylim([-70, 70])
-#ax.axhline(y = 0, color = 'k', linewidth = 0.5)
-#ax.annotate(s = var_name[j], xy = (0.01, 1.02), xycoords = 'axes fraction')
-# Add xticks on the middle of the group bars
-ax.set_xticks(positions[5]) #positions 5 is the middle rcm
-ax.set_xticklabels(np.repeat('', 11))
-
-#add lines between groups
-y = [25, 0]
-if j == 2: 
-    y = [0.025, 0]
-elif j == 1:
-    y = [15, 0]
-    
-adjust = 0.05
-for i in np.arange(0, len(positions[0])):
-    #position[0] is position of the first gcm
-    #position[-1] has the position of the last gcm
-    x1 = positions[0][i]
-    x = [x1 - adjust, x1 - adjust]     
-    ax.plot(x, y, color = 'black', linewidth = 0.5)
+ax.legend(custom_lines, ['Population', 'Historical', 'Mortality', 
+                         'Hist-nat', 'Climate'], 
+           bbox_to_anchor=(0.9, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
 
 
-if j == 2:
-    ax.set_xlabel('RCM')
-    ax.set_xticklabels(rcm_short)
-ax.tick_params(bottom = 'False')
-
-ax.set_ylabel(var_label[j])
-    
-    # add CP4 and P25
-    ax.scatter(7.3, df_cp4[var_name[j].lower()][(df_cp4['scen'] == 'hist')].values, c = 'black',
-                            label = 'CP4A')
-    ax.scatter(7.3, df_p25[var_name[j].lower()][(df_p25['scen'] == 'hist')].values, c = 'black',
-                            marker = 's', label = 'P25')
-    #add trmm and obs
-    
-    ax.axhline(df15_agg_obs[var_name[j].lower()][(df15_agg_obs['mod'] == 'obs_trmm')].values,
-                            linestyle = 'dotted', color = '#e52929', label = 'TRMM', linewidth = lw)
-                            
-    ax.axhline(df38_agg_obs[var_name[j].lower()].values,
-                             color = '#e52929', label = 'CHIRPS', linewidth = lw)
-    
-
-plt.draw()
-#plt.annotate('Change in rainfall (mm/month)', (0.04, 0.65), xycoords = 'figure fraction',
-#             rotation = 90)
-
-# Create legend & Show graphic
-plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.25),ncol=4, frameon = False)
-
-#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Barchar_params_30_rcms_obs.png',
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_per.png',
 #            bbox_inches = 'tight', pad_inches = 0.3)
