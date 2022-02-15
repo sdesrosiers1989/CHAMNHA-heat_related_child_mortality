@@ -197,20 +197,7 @@ def calc_comp_num(p_list, m_list, e_list):
 
 
 #%% import e model data
-    
-path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_061/historical/'
-
-#historical
-filenames = glob.glob(path + '*historical*.nc')
-hist_list = iris.cube.CubeList()
-for file in filenames:
-    x = iris.load_cube(file)
-    hist_list.append(x)
-        
-path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_1/historical/'
-
-
-    
+ 
 #future
 path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_061/future/'
 
@@ -230,6 +217,26 @@ for file in filenames:
         ssp585_list.append(x)
         
 
+mods = np.unique([tp.gcm(x) for x in ssp119_list])
+    
+    
+    
+path = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_061/historical/'
+
+#historical
+filenames = glob.glob(path + '*historical*.nc')
+hist_list = iris.cube.CubeList()
+for file in filenames:
+    x = iris.load_cube(file)
+    if tp.gcm(x) in mods:
+        hist_list.append(x)
+        
+
+ssp245_list = [x for x in ssp245_list if tp.gcm(x) in mods]    
+ssp585_list = [x for x in ssp585_list if tp.gcm(x) in mods]    
+
+        
+
 
     
  #%% actual mortality
@@ -241,7 +248,8 @@ filenames = glob.glob(path + '*historical*')
 his = iris.cube.CubeList()
 for file in filenames:
     x = iris.load_cube(file)
-    his.append(x)
+    if tp.gcm(x) in mods:
+        his.append(x)
     
     
 path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/future/'
@@ -253,12 +261,14 @@ fut585_list = iris.cube.CubeList()
 
 for file in filenames:
     x = iris.load_cube(file)
-    if 'ssp119' in file:
-        fut119_list.append(x)
-    elif 'ssp245' in file:
-        fut245_list.append(x)
-    elif 'ssp585' in file:
-        fut585_list.append(x)
+    if tp.gcm(x) in mods:
+
+        if 'ssp119' in file:
+            fut119_list.append(x)
+        elif 'ssp245' in file:
+            fut245_list.append(x)
+        elif 'ssp585' in file:
+            fut585_list.append(x)
 
 
 
@@ -271,17 +281,15 @@ pop_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr
 pop_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010_regrid.nc')
 pop_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
 
-pop_2015 = pop_2010 + ((pop_2019 - pop_2010) / 2)
 
 #daily mortality
 dmor_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
 dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2010_regrid.nc')
 dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2019_regrid.nc')
 
-dmor_2015 = dmor_2010 + ((dmor_2019 - dmor_2010) / 2)
 
-pop_list = [pop_2000, pop_2010, pop_2015, pop_2019]
-mor_list = [dmor_2000, dmor_2010, dmor_2015, dmor_2019]
+pop_list = [pop_2000, pop_2010, pop_2019]
+mor_list = [dmor_2000, dmor_2010, dmor_2019]
 
 #future more and pop
 
@@ -372,8 +380,7 @@ for cube_list in futmor_list:
 
 #%% get mdoels into year lists
     
-hyears = [np.arange(1995, 2005),
-          np.arange(2011, 2021)]
+hyears = [np.arange(1995, 2005)]
 
 his_years = iris.cube.CubeList()
 
@@ -383,29 +390,6 @@ for year_group in hyears:
     if 1995 in year_group:
         h_list = [x for x in hist_list if x.coord('year').points[0] == 1995]
         
-    else:
-        #2011 - 2020 are split over 2 cube lists
-        h_list0 = [x for x in hist_list if x.coord('year').points[0] == 2005]
-        h_list1 = [x for x in hist_list if x.coord('year').points[0] == 2015]
-        h_list = iris.cube.CubeList()
-        
-        for mod in mods:
-            h_list0m = [y for y in h_list0 if tp.gcm(y) == mod][0]
-            h_list1m = [y for y in h_list1 if tp.gcm(y) == mod]
-            
-            if len(h_list1m) > 0:
-                #future mods only don't have 2015 - 2020 historical period, as that's actually climate change
-                h_list1m = h_list1m[0]
-                x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
-                x1 = h_list1m.extract(iris.Constraint(year = lambda cell: cell <= 2020))
-                
-                x = iris.cube.CubeList([x0,x1])
-                x = x.concatenate_cube()
-                
-                h_list.append(x)
-            else:
-                x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
-                h_list.append(x0)
         
     h_mean_list = iris.cube.CubeList()
     for cube in h_list:
@@ -463,8 +447,7 @@ for y in years:
     
 years = np.unique([x.coord('year').points[0] for x in his]) 
 
-hyears = [np.arange(1995, 2005),
-          np.arange(2011, 2021)]
+hyears = [np.arange(1995, 2005)]
 his_mor_years = iris.cube.CubeList()
 
 mods = np.unique([tp.gcm(x) for x in his])
@@ -473,29 +456,7 @@ for year_group in hyears:
     if 1995 in year_group:
         h_list = [x for x in his if x.coord('year').points[0] == 1995]
         
-    else:
-        #2011 - 2020 are split over 2 cube lists
-        h_list0 = [x for x in his if x.coord('year').points[0] == 2005]
-        h_list1 = [x for x in his if x.coord('year').points[0] == 2015]
-        h_list = iris.cube.CubeList()
-        
-        for mod in mods:
-            h_list0m = [y for y in h_list0 if tp.gcm(y) == mod][0]
-            h_list1m = [y for y in h_list1 if tp.gcm(y) == mod]
-            
-            if len(h_list1m) > 0:
-                #future mods only don't have 2015 - 2020 historical period, as that's actually climate change
-                h_list1m = h_list1m[0]
-                x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
-                x1 = h_list1m.extract(iris.Constraint(year = lambda cell: cell <= 2020))
-                
-                x = iris.cube.CubeList([x0,x1])
-                x = x.concatenate_cube()
-                
-                h_list.append(x)
-            else:
-                x0 = h_list0m.extract(iris.Constraint(year = lambda cell: cell >= 2011))
-                h_list.append(x0)
+    
         
     his_mor_years.append(h_list)
 
@@ -547,7 +508,7 @@ m_outlist = []
 e_outlist = []
 
 for i in np.arange(len(scen_list)):
-    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[4]]
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[3]]
     m_inlist = [dmor_2000, mor_list_fut[0]]
     e_inlist = [his_years[i_h], scen_list[i][0]]
 
@@ -567,7 +528,7 @@ m_outlist3 = []
 e_outlist3 = []
 
 for i in np.arange(len(scen_list)):
-    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[5]]
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[4]]
     m_inlist = [dmor_2000, mor_list_fut[1]]
     e_inlist = [his_years[i_h], scen_list[i][1]]
 
@@ -584,7 +545,7 @@ m_outlist4 = []
 e_outlist4 = []
 
 for i in np.arange(len(scen_list)):
-    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[6]]
+    p_inlist = [pop_ratio_list[i_h], pop_ratio_list[5]]
     m_inlist = [dmor_2000, mor_list_fut[2]]
     e_inlist = [his_years[i_h], scen_list[i][2]]
 
