@@ -386,7 +386,7 @@ def bias_corr(obs, mod_list, area, ls, obs_years, myears, path):
     print('Applying correction factors..')
     apply_corr(p_cor, tas_his, path, end = 'his')
     apply_corr(p_cor, tas_mid, path, end = 'mid')
-    apply_corr(p_cor, tas_future, path, end = 'end')
+    #apply_corr(p_cor, tas_future, path, end = 'end')
 
 #%%
     
@@ -410,7 +410,7 @@ area = [min_lat, max_lat, min_lon, max_lon]
 # years of interest
 obs_years = [1971, 2000]
 #obs_yers = [1997, 2006]
-myears = [2031, 2060, 2071, 2100] #start end year mid, start end year end-century
+myears = [2006, 2060, 2071, 2100] #start end year mid, start end year end-century
 
 #%%
 
