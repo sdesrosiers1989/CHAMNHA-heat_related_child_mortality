@@ -29,6 +29,8 @@ import cartopy.crs as ccrs
 
 import glob
 
+import copy
+
 import numpy as np
 
 import itertools
@@ -41,20 +43,24 @@ proj = ccrs.PlateCarree(central_longitude = 38)
 
 #%% Import model data  on native grids
 
+#Import p25 to get bounds - p25, cp4 domains slightly smaller than cordex
+
+p25_bounds = iris.load('/nfs/a277/IMPALA/data/25km/d03236/*mean*')
+p25_bounds = p25_bounds[0]
 
 #CMIP6 data (tas = near surface air temperature, which is between 1.5 to 10m)
 tas_constraint = iris.Constraint(cube_func=lambda cube: cube.var_name == 'tas')
 path = '/nfs/a321/earsch/Tanga/Data/CMIP6/ScenarioMIP/'
 #filenames = glob.glob(path + 'histor/tas*day*.nc')
-#filenames = glob.glob(path+ 'ssp585/tas*day*.nc')
+filenames = glob.glob(path+ 'ssp585/tas*day*.nc')
 #filenames = glob.glob(path+ 'ssp119/tas*day*.nc')
-filenames = glob.glob(path+ 'ssp245/tas*day*.nc')
-filenames = [x for x in filenames if 'CESM' not in x]
+#filenames = glob.glob(path+ 'ssp245/tas*day*.nc')
 
 #filenames.extend(filenames_ssp585)
 #filenames.extend(filenames_ssp119)
 #filenames.extend(filenames_ssp245)
 
+filenames = [x for x in filenames if 'CESM' not in x]
 
 filenames = sorted(filenames) # need to sort before splitting otherwise will end up with duplicate groups
 
@@ -81,27 +87,8 @@ for file_list in new_files:
 mpi_hr_hist = iris.load('/nfs/a321/earsch/Tanga/Data/CMIP6/ScenarioMIP/ssp585/tas_day_MPI-ESM1-2-HR_ssp585_*.nc', tas_constraint)
 cs = mpi_hr_hist[0].coord_system(iris.coord_systems.CoordSystem)
 
-def add_time_dim(cube):
-    tcoord0_auxtime = cube.coord('time')
-    tcoord0_dimtime = iris.coords.DimCoord(tcoord0_auxtime.points, 
-                                               standard_name = tcoord0_auxtime.standard_name, 
-                                               units = tcoord0_auxtime.units, 
-                                               var_name = tcoord0_auxtime.var_name, 
-                                               attributes = tcoord0_auxtime.attributes)
-    cube.remove_coord('time')
-    cube.add_dim_coord(tcoord0_dimtime, 0)
-    return cube
 
-def add_lat_lon_dim(cube, base):
-    latcoord = base.coord('latitude')
-    loncoord = base.coord('longitude')
-    
-    cube.remove_coord('latitude')
-    cube.remove_coord('longitude')
-    cube.add_dim_coord(latcoord, 1)
-    cube.add_dim_coord(loncoord, 2)
-    return cube 
-
+ 
 #concatenate and ensure all have same coord system
 cmip6_cat = iris.cube.CubeList()
 for item in cmip6_cubes:
@@ -112,11 +99,9 @@ for item in cmip6_cubes:
             i.remove_coord('height')
         except:
             print('no height')
-    if item[0].attributes['source_id'] == 'CESM2-WACCM':
-        item[0] = add_time_dim(item[0])
-        for i in item:
-            base = item[1]
-            i = i.regrid(base, iris.analysis.AreaWeighted())
+    
+        
+    
     x = item.concatenate_cube()
     x.coord('longitude').coord_system = cs
     x.coord('latitude').coord_system = cs
@@ -158,7 +143,7 @@ base = mpi_hr_hist[0][0]
 #base.coord('latitude').guess_bounds()
 base = base.extract(p25_sub)
 
-base_subset = base.intersection(longitude=(-25, 60)) 
+base_subset = base.intersection(longitude=(-25, 60))
 #because ciruclar coords have a split in Africa - can't extract using constraint
 
 
@@ -175,6 +160,7 @@ regridded = iris.cube.CubeList()
 for cube in goodyears:
     x = cube.regrid(base_subset, iris.analysis.AreaWeighted())
     regridded.append(x)
+
 
 
 
