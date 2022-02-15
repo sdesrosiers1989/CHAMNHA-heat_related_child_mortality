@@ -118,25 +118,6 @@ def add_att_from_filename_tas(cube, field, filename):
     cube.add_aux_coord(iris.coords.AuxCoord(mod, long_name = 'model'))
     cube.add_aux_coord(iris.coords.AuxCoord(sim, long_name = 'sim'))
     
-def add_att_from_filename_tashis_1971(cube, field, filename):
-    #split filename into sections by '_', find second partition and split again
-    file = filename[70:-3]
-    mod_type = file.partition('_')[0]
-    if (mod_type == 'cp4') or (mod_type == 'p25'):
-        gcm = 'um'
-        mod = mod_type
-        sim = file.partition('_')[2].partition('_')[2]
-        if sim == 'hist':
-            sim = 'historical'
-    else:
-        gcm = mod_type
-        mod = file.partition('_')[2].partition('_')[0]
-        sim = file.partition('_')[2].partition('_')[2]
-
-    cube.add_aux_coord(iris.coords.AuxCoord(gcm, long_name = 'gcm'))
-    cube.add_aux_coord(iris.coords.AuxCoord(mod, long_name = 'model'))
-    cube.add_aux_coord(iris.coords.AuxCoord('historicalear', long_name = 'sim')) #otherwise will extract his years
-    
 def add_att_from_filename_tas45(cube, field, filename):
     #split filename into sections by '_', find second partition and split again
     file = filename[59:-3]
@@ -403,9 +384,9 @@ def bias_corr(obs, mod_list, area, ls, obs_years, myears, path):
     p_cor = calc_corr_fact(cru_month, tas_months[0])
     
     print('Applying correction factors..')
-    #apply_corr(p_cor, tas_his, path, end = 'his')
-    apply_corr(p_cor, tas_mid, path, end = 'ear')
-    #apply_corr(p_cor, tas_future, path, end = 'end')
+    apply_corr(p_cor, tas_his, path, end = 'his')
+    apply_corr(p_cor, tas_mid, path, end = 'mid')
+    apply_corr(p_cor, tas_future, path, end = 'end')
 
 #%%
     
@@ -429,9 +410,9 @@ area = [min_lat, max_lat, min_lon, max_lon]
 # years of interest
 obs_years = [1971, 2000]
 #obs_yers = [1997, 2006]
-myears = [2001, 2005, 2061, 2062] #start end year mid, start end year end-century
+myears = [2006, 2060, 2071, 2100] #start end year mid, start end year end-century
 
-#%% !!!Just to get 2001 - 2005 (actually from historical sim)
+#%%
 
 ##load obs data
 # Get CRU
@@ -449,22 +430,25 @@ ls = ls[0,0,:,:] #remove first two time, surface coords that are unused
 ls.coord('longitude').points = ls.coord('longitude').points - 360
 
 
-#tas future (1971 - 2006)
-path = '/nfs/a321/earsch/Tanga/Data/CORDEX/Processed/tas_hist_1971onwards/'
-filenames = glob.glob(path + '*historical.nc')
-filenames= [x for x in filenames if 'p25' not in x]
+#tas future
+path = '/nfs/a321/earsch/Tanga/Data/CORDEX/Processed/tas_rcp85allyears/'
+filenames = glob.glob(path + '*.nc')
 tas = iris.cube.CubeList()
 tas_constraint = iris.Constraint(cube_func=lambda cube: cube.var_name == 'tas')
 tas2_constraint = iris.Constraint(cube_func=lambda cube: cube.var_name == 'd03236')
 for file in filenames:
-    print(file)
     if ('p25' in file) or ('cp4' in file):
-        print('Skip um')
+        print('skipping um') # already done
     else:
-        x = iris.load_cube(file,  tas_constraint, callback = add_att_from_filename_tashis_1971)
+        x = iris.load_cube(file,  tas_constraint, callback = add_att_from_filename_tas)
     tas.append(x)
     
-
+#add rcp45
+path = '/nfs/a321/earsch/Tanga/Data/CORDEX/Processed/tas_rcp45/'
+filenames = glob.glob(path + '*.nc')
+for file in filenames:
+    x = iris.load_cube(file,  tas_constraint, callback = add_att_from_filename_tas45)
+    tas.append(x)
 
 #tas his
 path = '/nfs/a321/earsch/Tanga/Data/CORDEX/Processed/tas/'
@@ -482,8 +466,7 @@ for file in filenames:
     tas_his.append(x)
     
     
-#%% Run bias corr function for each historical model seperately to get 2000 - 2005 only
-#historical 2001 - 2005 data put in mid position
+#%% Run bias corr function for each historical model seperately
 
 #save path
 path = '/nfs/a321/earsch/Tanga/Data/CORDEX/Bias_corr/CHAMNHA/tas/'
@@ -494,7 +477,5 @@ for i in np.arange(0, len(tas_his)):
     mod_list = find_mod(his_cube, tas)
     
     bias_corr(cru_tas, mod_list, area, ls, obs_years, myears, path)
-   
     
-    
-    
+
