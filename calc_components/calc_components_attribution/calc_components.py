@@ -357,6 +357,11 @@ np.nanmean(p_effect_h.data) +  np.nanmean(m_effect_h.data) +   np.nanmean(e_effe
 
 #%%check individual historical models - order mixed up
 
+
+np.nanmean(p_effect_h.data)
+np.nanmean(m_effect_h.data)
+np.nanmean(e_effect_h.data)
+
 print(np.nanmean(dif_h3[2].data))
 np.nanmean(plist_h3[0].data) +  np.nanmean(mlist_h3[0].data) +   np.nanmean(elist_h3[0].data) 
 
@@ -375,10 +380,10 @@ def cube_to_frame(p_effect_list, m_effect_list, e_effect_list, total_dif, period
         e = [x for x in e_effect_list if x.coord('ens').points[0] == gcm][0]
         d = [x for x in total_dif if x.coord('ens').points[0] == gcm][0]
         
-        p_val =  np.nanmean(p.data)
-        m_val =  np.nanmean(m.data)
-        e_val =  np.nanmean(e.data)
-        d_val =  np.nanmean(d.data)
+        p_val =  np.nansum(p.data)
+        m_val =  np.nansum(m.data)
+        e_val =  np.nansum(e.data)
+        d_val =  np.nansum(d.data)
         
         p_per = p_val / d_val * 100
         m_per = m_val / d_val * 100
@@ -496,7 +501,7 @@ ax.legend(custom_lines, ['Population', 'Historical', 'Mortality',
            bbox_to_anchor=(0.9, -0.2),ncol=3,frameon = False, handletextpad = 0.5)
 
 
-#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_abs.png',
+#fig.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/decomp_abs_total.png',
 #            bbox_inches = 'tight', pad_inches = 0.3)
 
 #%% Plot per mortality
