@@ -219,7 +219,7 @@ def distr_pop_bc(pop_table, scenario_name, bias_corr):
         save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR2.nc'
         pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
         
-        iris.save(pop_year_frac_regrid, save_path + save_name)
+        #iris.save(pop_year_frac_regrid, save_path + save_name)
         
         pop_output.append(pop_year_frac_regrid)
     return pop_output
@@ -284,66 +284,47 @@ qplt.contourf(pop2000, levels = pop_levs, extend = 'max', cmap = 'YlOrRd')
 qplt.contourf(p2000_regrid, levels = pop_levs, extend = 'max', cmap = 'YlOrRd')
 
 #%% restrict to afric only
-countries = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/africa_countires_only.nc')
-
-
-country_lookup = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/country_lookup.csv')
-country_lookup['Name'][country_lookup['Name'] == 'Republic of the Congo'] = 'Congo'
-country_lookup['Name'][country_lookup['Name'] == 'eSwatini'] = 'Swaziland'
-
 
 not_in_afr = ['Albania', 'Armenia', 'Azerbaijan', 'Cyprus', 'France', 'Greece', 
               'Iran', 'Iraq', 'Israel', 'Italy', 'Jordan', 'Kuwait', 'Lebanon',
               'Malta', 'Northern Cyprus', 'Oman', 'Palestine', 'Portugal', 'Qatar',
               'Saudi Arabia', 'Spain', 'Syria', 'Turkey', 'Turkmenistan', 'United Arab Emirates', 'Yemen']
 
-c_dict = dict(zip(country_lookup['Value'], country_lookup['Name']))
 
-#obs - used to get threshold
-cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
-                    iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
-
-cru_tas = cru_tas[0][0]
-cru_tas = cru_tas.regrid(pop_2019, iris.analysis.Linear())
 
 #%%
 
-pop_2019.data.mask[np.isnan(countries.data)] = True
-pop_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop_2019.data)
+tpop = []
+tpop_raw =[]
 
-pop_2045.data.mask[np.isnan(countries.data)] = True
-pop_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop_2045.data)
+cregrid = countries_regrid.regrid(pop_output[0], iris.analysis.Nearest())
 
-
-mor_2019.data.mask[np.isnan(countries.data)] = True
-mor_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), mor_2019.data)
-
-mor_2045.data.mask[np.isnan(countries.data)] = True
-mor_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), mor_2045.data)
-
-rmor_2019.data.mask[np.isnan(countries.data)] = True
-rmor_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), rmor_2019.data)
-
-rmor_2045.data.mask[np.isnan(countries.data)] = True
-rmor_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), rmor_2045.data)
+for i in np.arange(len(pop_output)):
+    df = country_total(pop_output[i], cregrid)
+    df = df[~df['Area'].isin(not_in_afr)]
     
+    x = np.nansum(df['pop'])
+    tpop.append(x)
+    
+    df = country_total(pop_output_raw[i], cregrid)
+    df = df[~df['Area'].isin(not_in_afr)]
+    
+    x = np.nansum(df['pop'])
+    tpop_raw.append(x)
+
+
+#actual 200 and 2010
+df = country_total(p2000_regrid, countries_regrid)
+df = df[~df['Area'].isin(not_in_afr)]
+x2000 = np.nansum(df['pop'])
+
+df = country_total(p2010_regrid, countries_regrid)
+df = df[~df['Area'].isin(not_in_afr)]
+x2010 = np.nansum(df['pop'])
 
 #%%
-print(np.nanmean(pop2019.data))
-print(np.nanmean(p2019_regrid.data))
-mpop = [np.nanmean(x.data) for x in pop_output]
-#mpop3 = [np.nanmean(x.data) for x in pop_output_ssp3]
 
-
-print(np.nansum(pop2019.data))
-print(np.nansum(p2019_regrid.data))
-print(np.nansum(df_2019['pop']))
-tpop = [np.nansum(x.data) for x in pop_output]
-tpop_raw = [np.nansum(x.data) for x in pop_output_raw]
-
-#tpop3 = [np.nansum(x.data) for x in pop_output_ssp3]
-
-#%%
+fig = plt.figure(figsize=(9,9))
 
 years = np.unique(ssp2['Year'])
 years = years[years >= 2000]
@@ -352,10 +333,11 @@ plt.plot(years, tpop, label = 'SSP2 Corrected')
 plt.plot(years, tpop_raw, label = 'SSP2')
 
 #plt.plot(years, tpop3, label = 'SSP3')
-plt.scatter([2000, 2010], [np.nansum(p2000_regrid.data), np.nansum(p2010_regrid.data)], label = 'Actual')
+plt.scatter([2000, 2010], [x2000, x2010], label = 'Actual')
 plt.xlabel('Year')
 plt.ylabel('Total African population (under 5)')
-plt.legend()
 
-plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid.png',
-         bbox_inches = 'tight', pad_inches = 0.3)
+plt.legend(bbox_to_anchor=(0.95, -0.1),ncol=3,frameon = False, handletextpad = 0.5)
+
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid_afonly.png',
+#         bbox_inches = 'tight', pad_inches = 0.3)
