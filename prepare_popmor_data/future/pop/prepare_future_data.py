@@ -37,8 +37,15 @@ pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_
 pop2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010_regrid.nc')
 pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000_regrid.nc')
 
-
+#change llok up anmes to match ssp
 country_lookup = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/country_lookup.csv')
+country_lookup['Name'][country_lookup['Name'] == 'Republic of the Congo'] = 'Congo'
+country_lookup['Name'][country_lookup['Name'] == 'eSwatini'] = 'Swaziland'
+country_lookup['Name'][country_lookup['Name'] == 'Tanzania'] = 'United Republic of Tanzania'
+country_lookup['Name'][country_lookup['Name'] == 'The Gambia'] = 'Gambia'
+country_lookup['Name'][country_lookup['Name'] == 'Libya'] = 'Libyan Arab Jamahiriya'
+
+
 ssp2 = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/future/ssp2_allcountries_04_bothsexes.csv', 
                    skiprows = 8)
 
@@ -130,6 +137,13 @@ both_years['avg_dif'] = (both_years['dif_x'] + both_years['dif_y']) / 2
 
 x = country_total(popfrac_2019, countries_regrid)
 
+#%%
+
+c = df_ssp_2000['Area']
+c2 = df_2000['Area'].values
+
+[x for x in c if x not in c2]
+
 #%% recreate popfraoc
 
 country_totalpop = country_total(p2019_regrid, countries_regrid)
@@ -202,7 +216,7 @@ def distr_pop_bc(pop_table, scenario_name, bias_corr):
                 pop_year_frac = copy.deepcopy(pop_year)
                 pop_year_frac.data = pop_year_frac.data*popfrac_2019.data
                 
-        save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR.nc'
+        save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR2.nc'
         pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
         
         iris.save(pop_year_frac_regrid, save_path + save_name)
@@ -251,6 +265,11 @@ def distr_pop(pop_table, scenario_name):
 pop_output = distr_pop_bc(ssp2, 'ssp2', both_years)
 pop_output_raw = distr_pop(ssp2, 'ssp2')
 
+#%%
+
+pop_output[9]= pop_output[9].regrid(countries_regrid, iris.analysis.AreaWeighted())
+
+check = country_total(pop_output[9], countries_regrid)
 
 #%%  check
         
@@ -263,6 +282,51 @@ qplt.contourf(pop_output[4], levels = pop_levs, extend = 'max', cmap = 'YlOrRd')
 
 qplt.contourf(pop2000, levels = pop_levs, extend = 'max', cmap = 'YlOrRd')
 qplt.contourf(p2000_regrid, levels = pop_levs, extend = 'max', cmap = 'YlOrRd')
+
+#%% restrict to afric only
+countries = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/africa_countires_only.nc')
+
+
+country_lookup = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/country_lookup.csv')
+country_lookup['Name'][country_lookup['Name'] == 'Republic of the Congo'] = 'Congo'
+country_lookup['Name'][country_lookup['Name'] == 'eSwatini'] = 'Swaziland'
+
+
+not_in_afr = ['Albania', 'Armenia', 'Azerbaijan', 'Cyprus', 'France', 'Greece', 
+              'Iran', 'Iraq', 'Israel', 'Italy', 'Jordan', 'Kuwait', 'Lebanon',
+              'Malta', 'Northern Cyprus', 'Oman', 'Palestine', 'Portugal', 'Qatar',
+              'Saudi Arabia', 'Spain', 'Syria', 'Turkey', 'Turkmenistan', 'United Arab Emirates', 'Yemen']
+
+c_dict = dict(zip(country_lookup['Value'], country_lookup['Name']))
+
+#obs - used to get threshold
+cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
+                    iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
+
+cru_tas = cru_tas[0][0]
+cru_tas = cru_tas.regrid(pop_2019, iris.analysis.Linear())
+
+#%%
+
+pop_2019.data.mask[np.isnan(countries.data)] = True
+pop_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop_2019.data)
+
+pop_2045.data.mask[np.isnan(countries.data)] = True
+pop_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop_2045.data)
+
+
+mor_2019.data.mask[np.isnan(countries.data)] = True
+mor_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), mor_2019.data)
+
+mor_2045.data.mask[np.isnan(countries.data)] = True
+mor_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), mor_2045.data)
+
+rmor_2019.data.mask[np.isnan(countries.data)] = True
+rmor_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), rmor_2019.data)
+
+rmor_2045.data.mask[np.isnan(countries.data)] = True
+rmor_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), rmor_2045.data)
+    
 
 #%%
 print(np.nanmean(pop2019.data))
