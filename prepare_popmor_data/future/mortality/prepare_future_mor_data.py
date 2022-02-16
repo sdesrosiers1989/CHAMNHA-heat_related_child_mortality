@@ -53,6 +53,12 @@ mor_ref_ex = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/v
 mor_better_ex = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/vis_totaldeaths_better_both_04_extracountries.csv')
 mor_worse_ex = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/vis_totaldeaths_worse_both_04_extracountries.csv')
 
+
+#regrid to CMIP6
+scen = '119'
+path = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/end/'
+filenames = glob.glob(path + '*' + scen + '.nc')
+tas = iris.load_cube(filenames[0])[0]
 #%%
 
 n = np.unique(mor_ref['Location'].values)
@@ -283,9 +289,10 @@ def distr_dat_bc(in_table, scenario_name, bias_corr):
                 print(c_name)
                 
         save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf_BIASCORR.nc'
-        iris.save(mor_year_frac, save_path + save_name)
+        mor_year_frac_regrid = mor_year_frac.regrid(tas, iris.analysis.AreaWeighted())
+        iris.save(mor_year_frac_regrid, save_path + save_name)
         
-        output.append(mor_year_frac)
+        output.append(mor_year_frac_regrid)
     return output
 
 def distr_dat(in_table, scenario_name):
@@ -321,9 +328,11 @@ def distr_dat(in_table, scenario_name):
                 
                 mor_year_frac = copy.deepcopy(mor_year)
                 mor_year_frac.data = mor_year_frac.data*popfrac_2019.data
-                
+
+        mor_year_frac_regrid = mor_year_frac.regrid(tas, iris.analysis.AreaWeighted())
+    
+        output.append(mor_year_frac_regrid)
         
-        output.append(mor_year_frac)
     return output
 
 mor_ref_output = distr_dat_bc(mor_ref_ex, 'ref', both_years)
@@ -376,5 +385,5 @@ plt.xlabel('Year')
 plt.ylabel('Total African mortality (under 5)')
 plt.legend()
 
-plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_GBDRef_corrected.png',
+plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_GBDRef_corrected_regrid.png',
          bbox_inches = 'tight', pad_inches = 0.3)
