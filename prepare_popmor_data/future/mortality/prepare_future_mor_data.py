@@ -30,7 +30,6 @@ import copy
 #%%
 
 countries = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/africa_countryname.nc')
-popfrac_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/popfrac_2019_regrid.nc')
 pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
 
 
@@ -83,26 +82,19 @@ ref_names = np.unique(mor_ref['Location'])
 
 #%% regrid countries to poprfac
 
-countries_regrid = countries.regrid(popfrac_2019, iris.analysis.Nearest())
-countries_regrid.coord('latitude').guess_bounds()
-countries_regrid.coord('longitude').guess_bounds()
+countries_regrid = countries.regrid(mor_2019, iris.analysis.Nearest())
 
 
-popfrac_2019.coord('latitude').guess_bounds()
-popfrac_2019.coord('longitude').guess_bounds()
 
-pop2019 = pop2019.regrid(popfrac_2019, iris.analysis.AreaWeighted())
-
-m2000_regrid = mor_2000.regrid(popfrac_2019, iris.analysis.AreaWeighted())
-m2010_regrid = mor_2010.regrid(popfrac_2019, iris.analysis.AreaWeighted())
-m2019_regrid = mor_2019.regrid(popfrac_2019, iris.analysis.AreaWeighted())
 
 
 #%%
 
-popfrac_2019.data = np.ma.masked_array(popfrac_2019.data, countries_regrid.data.mask)
 pop2019.data = np.ma.masked_array(pop2019.data, countries_regrid.data.mask)
 
+m2019_regrid = copy.deepcopy(mor_2019)
+m2010_regrid = copy.deepcopy(mor_2010)
+m2000_regrid = copy.deepcopy(mor_2000)
 
 m2019_regrid.data = np.ma.masked_array(m2019_regrid.data, countries_regrid.data.mask)
 m2010_regrid.data = np.ma.masked_array(m2010_regrid.data, countries_regrid.data.mask)
@@ -295,9 +287,9 @@ def distr_dat_bc(in_table, scenario_name, bias_corr):
                 print(c_name)
         mor_year_frac_regrid = mor_year_frac.regrid(tas, iris.analysis.AreaWeighted())
         
-       # if int(y) > 2050:
-       #     save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf_BIASCORR.nc'      
-       #     iris.save(mor_year_frac_regrid, save_path + save_name)
+        #if int(y) > 2050:
+        #    save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf_BIASCORR.nc'      
+        #    iris.save(mor_year_frac_regrid, save_path + save_name)
         
         output.append(mor_year_frac_regrid)
     return output
@@ -337,21 +329,76 @@ def distr_dat(in_table, scenario_name):
                 mor_year_frac.data = mor_year_frac.data*popfrac_2019.data
 
         mor_year_frac_regrid = mor_year_frac.regrid(tas, iris.analysis.AreaWeighted())
-        
-        if int(y) == 2050:
-            save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf.nc'      
-            iris.save(mor_year_frac_regrid, save_path + save_name)
     
         output.append(mor_year_frac_regrid)
         
     return output
-#%%
 
 mor_ref_output = distr_dat_bc(mor_ref_ex, 'ref', both_years)
 mor_ref_output_raw = distr_dat(mor_ref_ex, 'ref')
 
 #pop_output_ssp3 = distr_pop(ssp3, 'ssp3')
 
+#%% Modify pop2019
+ #calc frac chagne from 2000 for each ssp2 year
+
+base =  mor_ref_output[0]
+
+fracchange=  iris.cube.CubeList()
+for cube in mor_ref_output:
+    x = cube/base
+    fracchange.append(x)
+
+#apply frac change to correctly gridded input pop2090 data
+actual_mor2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2019_regrid.nc')
+actual_mor2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2010_regrid.nc')
+actual_mor2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2000_regrid.nc')
+
+
+fracchange_regrid =  iris.cube.CubeList()
+for cube in fracchange:
+    x = cube.regrid(actual_mor2019, iris.analysis.AreaWeighted())
+    fracchange_regrid.append(x)
+
+#calc avg change (do it this way as 0s in egypt messing up avg change otherwise)
+total_mor = [np.nansum(x.data) for x in mor_ref_output]
+base_mor = np.nansum(base.data) 
+
+avg_change = total_mor / base_mor
+    
+
+act_mask = actual_mor2000.data.mask
+new_mask = fracchange_regrid[0].data.mask
+
+act_mask = np.where(act_mask == True, 1, 0)
+new_mask = np.where(new_mask == True, 1, 0)
+mask_dif = act_mask - new_mask
+
+new_dat = iris.cube.CubeList()
+for i in np.arange(len(fracchange_regrid)):
+    cube = fracchange_regrid[i]
+    
+    #change all gridcells, even masked ones
+    new_cube = actual_mor2000 * avg_change[i]
+    #change specifically ones have data for
+    x = cube * actual_mor2000
+
+    #where mask si the same, use fracchange * pop2000, otherwise use
+    # pop2000 * avg_change
+    new_cube.data = np.ma.where(mask_dif == 0, x.data, new_cube.data)    
+    new_dat.append(new_cube)
+    
+
+years = np.unique(mor_ref_ex['Year'])
+years = years[years >= 2000]
+
+save_path = '/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/processed/'
+
+
+for i in np.arange(len(new_dat)):
+    y = years[i]
+    save_name = 'ref' + '_' + str(y)[0:4] + '_04_totalmor_mf_BIASCORR2.nc' 
+    iris.save(new_dat[i], save_path + save_name)
 
 
 #%%  check
