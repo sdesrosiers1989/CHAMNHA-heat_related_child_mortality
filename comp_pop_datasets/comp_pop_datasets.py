@@ -38,9 +38,9 @@ pop2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_
 pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000_regrid.nc')
 
 
-gpw_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/gpw_both_densityperkm_0_4_2010.nc')
-gpw_2010_regrid = iris.save(gp2010_regrid, '/nfs/a321/earsch/CHAMNHA/input_data/pop/gpw_both_densityperkm_0_4_2010_regrid.nc')
-
+gpw_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/gpw_both_densityperkm_0_4_2010_regrid.nc')
+gpw_grid_area = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/gpw_gridarea.nc')
+gpw_2010 = gpw_2010 * gpw_grid_area / 1000000
 
 #change llok up anmes to match ssp
 country_lookup = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/country_lookup.csv')
@@ -84,10 +84,6 @@ p2010_regrid = pop2010.regrid(popfrac_2019, iris.analysis.AreaWeighted())
 p2019_regrid = pop2019.regrid(popfrac_2019, iris.analysis.AreaWeighted())
 
 
-gpw_2010.coord('latitude').guess_bounds()
-gpw_2010.coord('longitude').guess_bounds()
-gp2010_regrid = gpw_2010.regrid(popfrac_2019, iris.analysis.AreaWeighted())
-
 print(np.nansum(pop2000.data), np.nansum(p2000_regrid.data))
 print(np.nansum(pop2010.data), np.nansum(p2010_regrid.data))
 
@@ -97,7 +93,7 @@ p2019_regrid.data = np.ma.masked_array(p2019_regrid.data, countries_regrid.data.
 p2010_regrid.data = np.ma.masked_array(p2010_regrid.data, countries_regrid.data.mask)
 p2000_regrid.data = np.ma.masked_array(p2000_regrid.data, countries_regrid.data.mask)
 
-gp2010_regrid.data = np.ma.masked_array(gp2010_regrid.data, countries_regrid.data.mask)
+gpw_2010.data = np.ma.masked_array(gpw_2010.data, countries_regrid.data.mask)
 
 #%% Bias correct -finding dif between 2000, 2010 - avg diff
 
@@ -133,7 +129,7 @@ df_2000 = country_total(p2000_regrid, countries_regrid)
 df_2010 = country_total(p2010_regrid, countries_regrid)
 df_2019 = country_total(p2019_regrid, countries_regrid)
 
-df_g2010 = country_total(gp2010_regrid, countries_regrid)
+df_g2010 = country_total(gpw_2010, countries_regrid)
 
 df_ssp_2000 = ssp2[ssp2['Year'] == 2000]
 
@@ -157,32 +153,6 @@ c2 = df_2000['Area'].values
 
 [x for x in c if x not in c2]
 
-#%% recreate popfraoc
-
-country_totalpop = country_total(p2019_regrid, countries_regrid)
-cnames = country_totalpop['Area'].values
-   
-popfrac_2019 = copy.deepcopy(p2019_regrid)
-dims = popfrac_2019.shape    
-
-# get all country codes from map
-dat = popfrac_2019.data
-vals = np.unique(dat)
-vals = vals[vals.mask == False]
-
-        
-for i in np.arange(dims[0]):
-    for j in np.arange(dims[1]):
-        
-        val = countries_regrid[i,j].data
-        if np.ma.is_masked(val) == False:
-            c_name = c_dict[int(val)]
-            if c_name in cnames:
-    
-    
-                p = country_totalpop[country_totalpop['Area'] == c_name]['pop'].values
-                replace_val = p2019_regrid[i,j].data / p
-                popfrac_2019.data[i,j] = replace_val
 
 
 #%%
@@ -234,9 +204,12 @@ df = country_total(p2010_regrid, countries_regrid)
 df = df[~df['Area'].isin(not_in_afr)]
 x2010 = np.nansum(df['pop'])
 
-df = country_total(gp2010_regrid, countries_regrid)
+df = country_total(gpw_2010, countries_regrid)
 df = df[~df['Area'].isin(not_in_afr)]
 gx2010 = np.nansum(df['pop'])
+
+UN = [131107 * 1000, 165704.243 * 1000]
+#from WPP2019_POP_F07_1_Population_By_AGE_BOTH_SEXES
 
 #%%
 
@@ -251,10 +224,13 @@ plt.plot(years, tpop_raw, label = 'SSP2')
 #plt.plot(years, tpop3, label = 'SSP3')
 plt.scatter([2000, 2010], [x2000, x2010], label = 'WorldPop')
 plt.scatter([2010], [gx2010], label = 'GPW', c = 'black')
+plt.scatter([2000, 2010], UN, label = 'UN', c = 'red')
+
+
 plt.xlabel('Year')
 plt.ylabel('Total African population (under 5)')
 
-plt.legend(bbox_to_anchor=(0.95, -0.1),ncol=4,frameon = False, handletextpad = 0.5)
+plt.legend(bbox_to_anchor=(0.85, -0.1),ncol=5,frameon = False, handletextpad = 0.5)
 
-#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid_afonly.png',
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid_afonly_morestimates.png',
 #         bbox_inches = 'tight', pad_inches = 0.3)
