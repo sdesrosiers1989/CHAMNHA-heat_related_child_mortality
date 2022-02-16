@@ -172,7 +172,7 @@ x = country_total(popfrac_2019, countries_regrid)
 
 #%% extrapolate to 2050
 
-def extend(in_table, interp_sy = 2020, end_year = 2050, country_names = names):
+def extend(in_table, country_names, interp_sy = 2020, end_year = 2050):
     
     for n in country_names:
         c_df = in_table[in_table['Location'] == n]
@@ -396,19 +396,19 @@ ax2.plot(years[41:], np.array(tmor[41:]) / 1000000, label = 'Extrapolation', lin
           c= '#7570b3')
 
 
-ax1.annotate('A)', (-0.03, 1.01), xycoords = 'axes fraction',
+ax1.annotate(text = 'A)', xy = (-0.03, 1.01), xycoords = 'axes fraction',
              rotation = 0, ha = 'left', weight = 'bold')
-ax2.annotate('B)', (-0.03, 1.01), xycoords = 'axes fraction',
+ax2.annotate(text = 'B)', xy = (-0.03, 1.01), xycoords = 'axes fraction',
              rotation = 0, ha = 'left', weight = 'bold')
 
 ax2.scatter(actual_x, actual_y, label = 'UNICEF')
 ax2.set_xlabel('Year')
-ax2.set_ylabel('Total under 5 African mortality')
+ax2.set_ylabel('Total all-cause under 5 African mortality')
 
-ax2.annotate(s = '1e6', xy = (0.02, 1.01), xycoords = 'axes fraction',ha = 'center')
+ax2.annotate(text = '1e6', xy = (0.02, 1.01), xycoords = 'axes fraction',ha = 'center')
 
 ax1.legend(bbox_to_anchor=(1.0, -0.05),ncol=5,frameon = False, handletextpad = 0.5)
 ax2.legend(bbox_to_anchor=(0.8, -0.1),ncol=3,frameon = False, handletextpad = 0.5)
 
-#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_POP_MOR.png',
-#         bbox_inches = 'tight', pad_inches = 0.3)
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/FigS6_Inputdata_POP_MOR.png',
+ #        bbox_inches = 'tight', pad_inches = 0.3)
