@@ -32,7 +32,6 @@ import copy
 
 
 countries = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/africa_countryname.nc')
-popfrac_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/popfrac_2019_regrid.nc')
 pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
 pop2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010_regrid.nc')
 pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000_regrid.nc')
@@ -67,21 +66,18 @@ c_dict = dict(zip(country_lookup['Value'], country_lookup['Name']))
 
 #%% regrid countries to poprfac
 
-countries_regrid = countries.regrid(popfrac_2019, iris.analysis.Nearest())
-countries_regrid.coord('latitude').guess_bounds()
-countries_regrid.coord('longitude').guess_bounds()
+countries_regrid = countries.regrid(pop2019, iris.analysis.Nearest())
 
 
-popfrac_2019.coord('latitude').guess_bounds()
-popfrac_2019.coord('longitude').guess_bounds()
-p2000_regrid = pop2000.regrid(popfrac_2019, iris.analysis.AreaWeighted())
-p2010_regrid = pop2010.regrid(popfrac_2019, iris.analysis.AreaWeighted())
-p2019_regrid = pop2019.regrid(popfrac_2019, iris.analysis.AreaWeighted())
 
-print(np.nansum(pop2000.data), np.nansum(p2000_regrid.data))
-print(np.nansum(pop2010.data), np.nansum(p2010_regrid.data))
+print(np.nansum(pop2000.data))
+print(np.nansum(pop2010.data))
 
 #%%apply countries mask to pop data
+
+p2019_regrid = copy.deepcopy(pop2019)
+p2010_regrid = copy.deepcopy(pop2010)
+p2000_regrid = copy.deepcopy(pop2000)
 
 p2019_regrid.data = np.ma.masked_array(p2019_regrid.data, countries_regrid.data.mask)
 p2010_regrid.data = np.ma.masked_array(p2010_regrid.data, countries_regrid.data.mask)
@@ -135,7 +131,6 @@ both2010['dif'] = both2010['pop'] - both2010['Population']
 both_years = pd.merge(both2000, both2010, on = ['Area'])
 both_years['avg_dif'] = (both_years['dif_x'] + both_years['dif_y']) / 2
 
-x = country_total(popfrac_2019, countries_regrid)
 
 #%%
 
@@ -216,7 +211,7 @@ def distr_pop_bc(pop_table, scenario_name, bias_corr):
                 pop_year_frac = copy.deepcopy(pop_year)
                 pop_year_frac.data = pop_year_frac.data*popfrac_2019.data
                 
-        save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR2.nc'
+       # save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR2.nc'
         pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
         
         #iris.save(pop_year_frac_regrid, save_path + save_name)
@@ -265,6 +260,110 @@ def distr_pop(pop_table, scenario_name):
 pop_output = distr_pop_bc(ssp2, 'ssp2', both_years)
 pop_output_raw = distr_pop(ssp2, 'ssp2')
 
+#%% Modify pop2019
+ #calc frac chagne from 2000 for each ssp2 year
+
+base =  pop_output[0]
+
+fracchange=  iris.cube.CubeList()
+for cube in pop_output:
+    x = cube/base
+    fracchange.append(x)
+
+#apply frac change to correctly gridded input pop2090 data
+actual_pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000_regrid.nc')
+actual_pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
+
+
+fracchange_regrid =  iris.cube.CubeList()
+for cube in fracchange:
+    x = cube.regrid(actual_pop2019, iris.analysis.AreaWeighted())
+    fracchange_regrid.append(x)
+
+#calc avg change (do it this way as 0s in egypt messing up avg change otherwise)
+total_pop = [np.nansum(x.data) for x in pop_output]
+base_pop = np.nansum(base.data) 
+
+avg_change = total_pop / base_pop
+    
+
+act_mask = actual_pop2000.data.mask
+new_mask = fracchange_regrid[0].data.mask
+
+act_mask = np.where(act_mask == True, 1, 0)
+new_mask = np.where(new_mask == True, 1, 0)
+mask_dif = act_mask - new_mask
+
+new_dat = iris.cube.CubeList()
+for i in np.arange(len(fracchange_regrid)):
+    cube = fracchange_regrid[i]
+    
+    #change all gridcells, even masked ones
+    new_cube = actual_pop2000 * avg_change[i]
+    #change specifically ones have data for
+    x = cube * actual_pop2000
+
+    #where mask si the same, use fracchange * pop2000, otherwise use
+    # pop2000 * avg_change
+    new_cube.data = np.ma.where(mask_dif == 0, x.data, new_cube.data)    
+    new_dat.append(new_cube)
+    
+
+years = np.unique(ssp2['Year'])
+years = years[years >= 2000]
+
+save_path = '/nfs/a321/earsch/CHAMNHA/input_data/pop/future/processed/'
+
+
+for i in np.arange(len(new_dat)):
+    y = years[i]
+    save_name = 'ssp2' + '_' + str(y) + '_04population_mf_BIASCORR3.nc'
+    #iris.save(new_dat[i], save_path + save_name)
+
+## apply chagne to to raw
+    
+
+base =  pop_output_raw[0]
+
+fracchange=  iris.cube.CubeList()
+for cube in pop_output_raw:
+    x = cube/base
+    fracchange.append(x)
+
+fracchange_regrid =  iris.cube.CubeList()
+for cube in fracchange:
+    x = cube.regrid(actual_pop2019, iris.analysis.AreaWeighted())
+    fracchange_regrid.append(x)
+
+#calc avg change (do it this way as 0s in egypt messing up avg change otherwise)
+total_pop = [np.nansum(x.data) for x in pop_output_raw]
+base_pop = np.nansum(base.data) 
+
+avg_change = total_pop / base_pop
+    
+
+act_mask = actual_pop2000.data.mask
+new_mask = fracchange_regrid[0].data.mask
+
+act_mask = np.where(act_mask == True, 1, 0)
+new_mask = np.where(new_mask == True, 1, 0)
+mask_dif = act_mask - new_mask
+
+new_dat_raw = iris.cube.CubeList()
+for i in np.arange(len(fracchange_regrid)):
+    cube = fracchange_regrid[i]
+    
+    #change all gridcells, even masked ones
+    new_cube = actual_pop2000 * avg_change[i]
+    #change specifically ones have data for
+    x = cube * actual_pop2000
+
+    #where mask si the same, use fracchange * pop2000, otherwise use
+    # pop2000 * avg_change
+    new_cube.data = np.ma.where(mask_dif == 0, x.data, new_cube.data)    
+    new_dat_raw.append(new_cube)
+
+
 #%%
 
 pop_output[9]= pop_output[9].regrid(countries_regrid, iris.analysis.AreaWeighted())
@@ -299,8 +398,8 @@ tpop_raw =[]
 
 cregrid = countries_regrid.regrid(pop_output[0], iris.analysis.Nearest())
 
-for i in np.arange(len(pop_output)):
-    df = country_total(pop_output[i], cregrid)
+for i in np.arange(len(new_dat)):
+    df = country_total(new_dat[i], cregrid)
     df = df[~df['Area'].isin(not_in_afr)]
     
     x = np.nansum(df['pop'])
@@ -339,5 +438,5 @@ plt.ylabel('Total African population (under 5)')
 
 plt.legend(bbox_to_anchor=(0.95, -0.1),ncol=3,frameon = False, handletextpad = 0.5)
 
-#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid_afonly.png',
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid_afonly_2.png',
 #         bbox_inches = 'tight', pad_inches = 0.3)
