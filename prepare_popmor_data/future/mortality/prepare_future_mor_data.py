@@ -126,6 +126,10 @@ def extend(in_table, interp_sy = 2020, end_year = 2050, country_names = names):
         
         years = np.arange(2041, end_year +1)
         proj = p(years)
+        
+        if np.nanmin(proj) <= 0:
+            new_min = np.min(proj[proj> 0])
+            proj[proj <= 0] = new_min
                 
         
         df = pd.DataFrame({'Location': n,
@@ -136,9 +140,11 @@ def extend(in_table, interp_sy = 2020, end_year = 2050, country_names = names):
     return in_table
 
 
-mor_ref_ex = extend(mor_ref, country_names = [x for x in names if x != 'Northern Cyprus'])
+mor_ref_ex = extend(mor_ref, country_names = [x for x in names if x != 'Northern Cyprus'], end_year = 2060)
     
 
+x = mor_ref_ex[mor_ref_ex['Year'] == 2055]
+y = mor_ref_ex[mor_ref_ex['Location'] == 'Equatorial Guinea']
 #%% Bias correct -finding dif between 2000, 2010 - avg diff
 
 
@@ -287,10 +293,11 @@ def distr_dat_bc(in_table, scenario_name, bias_corr):
                 mor_year_frac.data = mor_year_frac.data*popfrac_2019.data
             else:
                 print(c_name)
-                
-        #save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf_BIASCORR.nc'
         mor_year_frac_regrid = mor_year_frac.regrid(tas, iris.analysis.AreaWeighted())
-        #iris.save(mor_year_frac_regrid, save_path + save_name)
+        
+       # if int(y) > 2050:
+       #     save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf_BIASCORR.nc'      
+       #     iris.save(mor_year_frac_regrid, save_path + save_name)
         
         output.append(mor_year_frac_regrid)
     return output
@@ -330,10 +337,15 @@ def distr_dat(in_table, scenario_name):
                 mor_year_frac.data = mor_year_frac.data*popfrac_2019.data
 
         mor_year_frac_regrid = mor_year_frac.regrid(tas, iris.analysis.AreaWeighted())
+        
+        if int(y) == 2050:
+            save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf.nc'      
+            iris.save(mor_year_frac_regrid, save_path + save_name)
     
         output.append(mor_year_frac_regrid)
         
     return output
+#%%
 
 mor_ref_output = distr_dat_bc(mor_ref_ex, 'ref', both_years)
 mor_ref_output_raw = distr_dat(mor_ref_ex, 'ref')
@@ -395,6 +407,7 @@ tmor_raw =[]
 cregrid = countries_regrid.regrid(mor_ref_output[0], iris.analysis.Nearest())
 
 for i in np.arange(len(mor_ref_output)):
+    print(i)
     df = country_total(mor_ref_output[i], cregrid)
     df = df[~df['Location'].isin(not_in_afr)]
     
@@ -430,7 +443,7 @@ actual_y = [x2000,
             x2010,
             x2019]
 
-years = np.arange(2000, 2051)
+years = np.arange(2000, 2061)
 
 plt.plot(years, tmor, label = 'GBD Ref Corrected')
 plt.plot(years, tmor_raw, label = 'GBD Ref')
@@ -441,5 +454,5 @@ plt.ylabel('Total African mortality (under 5)')
 plt.legend(bbox_to_anchor=(0.95, -0.1),ncol=3,frameon = False, handletextpad = 0.5)
 
 
-#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_GBDRef_corrected_regrid_afonly.png',
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_GBDRef_corrected_regrid_afonly2060.png',
 #         bbox_inches = 'tight', pad_inches = 0.3)
