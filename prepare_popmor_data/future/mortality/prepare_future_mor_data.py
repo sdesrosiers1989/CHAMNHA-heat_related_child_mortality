@@ -38,8 +38,8 @@ pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_
 country_lookup = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/country_lookup.csv')
 country_lookup['Name'][country_lookup['Name'] == 'Republic of the Congo'] = 'Congo'
 country_lookup['Name'][country_lookup['Name'] == 'eSwatini'] = 'Swaziland'
-country_lookup['Name'][country_lookup['Name'] == 'Northern Cyprus'] = 'Cyprus'
-
+#country_lookup['Name'][country_lookup['Name'] == 'Northern Cyprus'] = 'Cyprus'
+    #already cyprus val, which in other dates is cyprus + nrorthern cyprus
 
 mor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2019_regrid.nc')
 mor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2010_regrid.nc')
@@ -102,6 +102,36 @@ m2019_regrid.data = np.ma.masked_array(m2019_regrid.data, countries_regrid.data.
 m2010_regrid.data = np.ma.masked_array(m2010_regrid.data, countries_regrid.data.mask)
 m2000_regrid.data = np.ma.masked_array(m2000_regrid.data, countries_regrid.data.mask)
 
+
+
+#%% extrapolate to 2050
+
+def extend(in_table, interp_sy = 2020, end_year = 2050, country_names = names):
+    
+    for n in country_names:
+        c_df = in_table[in_table['Location'] == n]
+        
+        #calc line
+        
+        c_df_projperiod = c_df[c_df['Year'] >= interp_sy]
+        #m, b = np.polyfit(df['rp'].values, df['rl'].values, 1)
+        z = np.polyfit(c_df_projperiod['Year'].values, c_df_projperiod['Value'].values, 2)
+        p = np.poly1d(z)
+        
+        years = np.arange(2041, end_year +1)
+        proj = p(years)
+                
+        
+        df = pd.DataFrame({'Location': n,
+                           'Year': years,
+                           'Value': proj })
+        in_table = in_table.append(df)
+        
+    return in_table
+
+
+mor_ref_ex = extend(mor_ref, country_names = [x for x in names if x != 'Northern Cyprus'])
+    
 
 #%% Bias correct -finding dif between 2000, 2010 - avg diff
 
@@ -166,6 +196,8 @@ np.nansum(both_years['Value_y'])
 np.nansum(df_2010['mor'])
 np.nansum(both_years['Value_y'] * both_years['frac_y'])
 np.nansum(both_years['Value_y'] * both_years['avg_frac'])
+
+
 
 
 #%% recreate popfraoc
@@ -250,7 +282,7 @@ def distr_dat_bc(in_table, scenario_name, bias_corr):
             else:
                 print(c_name)
                 
-        save_name = scenario_name + '_' + str(y) + '_04_totalmor_mf_BIASCORR.nc'
+        save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf_BIASCORR.nc'
         iris.save(mor_year_frac, save_path + save_name)
         
         output.append(mor_year_frac)
@@ -294,10 +326,12 @@ def distr_dat(in_table, scenario_name):
         output.append(mor_year_frac)
     return output
 
-mor_ref_output = distr_dat_bc(mor_ref, 'ref', both_years)
-mor_ref_output_raw = distr_dat(mor_ref, 'ref')
+mor_ref_output = distr_dat_bc(mor_ref_ex, 'ref', both_years)
+mor_ref_output_raw = distr_dat(mor_ref_ex, 'ref')
 
 #pop_output_ssp3 = distr_pop(ssp3, 'ssp3')
+
+
 
 #%%  check
         
@@ -332,8 +366,7 @@ actual_y = [np.nansum(m2000_regrid.data),
             np.nansum(m2010_regrid.data),
             np.nansum(m2019_regrid.data)]
 
-years = np.unique(mor_ref['Year'])
-years = years[years >= 2000]
+years = np.arange(2000, 2051)
 
 plt.plot(years, tmor, label = 'GBD Ref Corrected')
 plt.plot(years, tmor_raw, label = 'GBD Ref')
@@ -342,3 +375,6 @@ plt.scatter(actual_x, actual_y, label = 'Actual')
 plt.xlabel('Year')
 plt.ylabel('Total African mortality (under 5)')
 plt.legend()
+
+plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_GBDRef_corrected.png',
+         bbox_inches = 'tight', pad_inches = 0.3)
