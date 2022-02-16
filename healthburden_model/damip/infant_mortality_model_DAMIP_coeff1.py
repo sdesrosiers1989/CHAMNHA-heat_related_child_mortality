@@ -149,14 +149,13 @@ def place_holder(base, dat):
     return new_dat
 
 #Coeff
-#per_c = 0.61
 per_c = 1.0
 c = math.log((per_c/100) + 1)
 coeff = place_holder(tas[0][0], c) 
 
 #Threshold
-thres = cru_tas.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
-thres.units = 'celsius'
+#thres = cru_tas.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
+#thres.units = 'celsius'
 
 #%% calculate temp diff with threshold
 
@@ -168,11 +167,15 @@ def calc_tdif(tavg, thres):
 
 tdif_hislist = []
 for cube in tas_his_years:
+    thres_years = cube.extract(iris.Constraint(year = lambda cell: 1995 <= cell <= 2010))
+    thres = thres_years.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
     tdif = calc_tdif(cube, thres)
     tdif_hislist.append(tdif)
 
 tdif_damiplist = []
 for cube in tas_damip_years:
+    thres_years = cube.extract(iris.Constraint(year = lambda cell: 1995 <= cell <= 2010))
+    thres = thres_years.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
     tdif = calc_tdif(cube, thres)
     tdif_damiplist.append(tdif)
     
@@ -230,8 +233,8 @@ def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort):
 #%% Run model
 
 #save path    
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_1/thres_75per/'
-path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_1/thres_75per/'
+path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_1/thres_model/'
+path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_1/thres_model/'
 
 dec_start = [1995, 2005, 2015]
 pop_list = [pop_2000, pop_2010, pop_2019]
@@ -254,8 +257,8 @@ for i in np.arange(0, len(dec_start)):
     mor = mor_list[i]
 
 
-    for j in np.arange(0, len(tdif_damiplist)):
-        cube = tdif_damiplist[j]
+    for j in np.arange(0, len(tdif_hislist)):
+        cube = tdif_hislist[j]
         
         print(j, tp.gcm(cube))
         

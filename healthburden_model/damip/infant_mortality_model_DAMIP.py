@@ -154,8 +154,8 @@ c = math.log((per_c/100) + 1)
 coeff = place_holder(tas[0][0], c) 
 
 #Threshold
-thres = cru_tas.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
-thres.units = 'celsius'
+#thres = cru_tas.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
+#thres.units = 'celsius'
 
 #%% calculate temp diff with threshold
 
@@ -167,11 +167,15 @@ def calc_tdif(tavg, thres):
 
 tdif_hislist = []
 for cube in tas_his_years:
+    thres_years = cube.extract(iris.Constraint(year = lambda cell: 1995 <= cell <= 2010))
+    thres = thres_years.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
     tdif = calc_tdif(cube, thres)
     tdif_hislist.append(tdif)
 
 tdif_damiplist = []
 for cube in tas_damip_years:
+    thres_years = cube.extract(iris.Constraint(year = lambda cell: 1995 <= cell <= 2010))
+    thres = thres_years.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
     tdif = calc_tdif(cube, thres)
     tdif_damiplist.append(tdif)
     
@@ -229,14 +233,14 @@ def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort):
 #%% Run model
 
 #save path    
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_75per/'
-path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_75per/'
+path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_model/'
+path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_model/'
 
 dec_start = [1995, 2005, 2015]
 pop_list = [pop_2000, pop_2010, pop_2019]
 mor_list = [dmor_2000, dmor_2010, dmor_2019]
 
-for i in np.arange(0, len(dec_start)):
+for i in np.arange(2, len(dec_start)):
     dstart = dec_start[i] # dec start and dec end used for subsetting climate data
     dec_end = dstart + 10  
     period = str(dstart) + str(dec_end - 1)
@@ -253,8 +257,8 @@ for i in np.arange(0, len(dec_start)):
     mor = mor_list[i]
 
 
-    for j in np.arange(0, len(tdif_hislist)):
-        cube = tdif_hislist[j]
+    for j in np.arange(0, len(tdif_damiplist)):
+        cube = tdif_damiplist[j]
         
         print(j, tp.gcm(cube))
         
