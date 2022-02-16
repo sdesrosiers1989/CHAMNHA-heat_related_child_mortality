@@ -105,6 +105,9 @@ filenames = glob.glob(path + '*.nc')
 tas = iris.load_cube(filenames[0])
 
 
+#so can convert to pop/mor per dridcell
+gs = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/gridarea_CanESM5.nc')
+gs.convert_units('km2')
 
 #%%
 cs = tas[0][0].coord_system(iris.coord_systems.CoordSystem)
@@ -115,9 +118,17 @@ for cube in dat_list:
     cube.coord('longitude').coord_system = cs
     cube.coord('latitude').coord_system = cs
 
-    new_cube = cube.regrid(tas[0], iris.analysis.Linear())
+    try:
+        cube.coord('latitude').guess_bounds()
+        cube.coord('longitude').guess_bounds()
+    except:
+        print('Has bounds')
+
+    new_cube = cube.regrid(tas[0], iris.analysis.AreaWeighted())
     #original unit is people per pixel (1km2) - 
     #as its a a ratio only needs to be same unit as future
+
+    new_cube = new_cube * gs
 
     regrid_list.append(new_cube)
 
@@ -127,13 +138,13 @@ iris.save(regrid_list[1], '/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr
 iris.save(regrid_list[2], '/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
 
 iris.save(regrid_list[3], '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2000_regrid.nc')
-iris.save(regrid_list[4], '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2000_regrid.nc')
-iris.save(regrid_list[5], '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2000_regrid.nc')
+iris.save(regrid_list[4], '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2010_regrid.nc')
+iris.save(regrid_list[5], '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2019_regrid.nc')
 
 x = regrid_list[3] / 365 # daily_mor
 iris.save(x, '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
 x = regrid_list[4] / 365 # daily_mor
-iris.save(x, '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
+iris.save(x, '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2010_regrid.nc')
 x = regrid_list[5] / 365 # daily_mor
-iris.save(x, '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
+iris.save(x, '/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2019_regrid.nc')
 
