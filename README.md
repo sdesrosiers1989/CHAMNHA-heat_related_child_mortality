@@ -34,6 +34,8 @@ Children are defined here as under 5, and the scripts and input data are based o
 - master: use this one for all analysis
 - popmor_dif_biascorr: <br />
   - Created when checking the impact of different bias-correction methods for future population and mortality on the HRCM and decomposition results. Impact of different methods minimal, so stayed used original, simpler method.
+- mor_rate:
+  - Created when checking if future mortality should be based on mortality rate rather than total. Total worked better.
 
 ## References
 
