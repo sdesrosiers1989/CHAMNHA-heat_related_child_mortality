@@ -288,9 +288,9 @@ def distr_dat_bc(in_table, scenario_name, bias_corr):
             else:
                 print(c_name)
                 
-        save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf_BIASCORR.nc'
+        #save_name = scenario_name + '_' + str(int(y)) + '_04_totalmor_mf_BIASCORR.nc'
         mor_year_frac_regrid = mor_year_frac.regrid(tas, iris.analysis.AreaWeighted())
-        iris.save(mor_year_frac_regrid, save_path + save_name)
+        #iris.save(mor_year_frac_regrid, save_path + save_name)
         
         output.append(mor_year_frac_regrid)
     return output
@@ -356,6 +356,25 @@ x = country_total(mor_ref_output[0], countries_regrid)
 x_check = pd.merge(x, df_2000, on = 'Location')
 
 #%%
+
+years = np.unique(mor_ref_ex['Year'])
+years = years[years >= 2000]
+
+mor_ref_output[35]= mor_ref_output[35].regrid(countries_regrid, iris.analysis.AreaWeighted())
+
+check = country_total(mor_ref_output[35], countries_regrid)
+
+
+#%% restrict to afric only
+
+not_in_afr = ['Albania', 'Armenia', 'Azerbaijan', 'Cyprus', 'France', 'Greece', 
+              'Iran', 'Iraq', 'Israel', 'Italy', 'Jordan', 'Kuwait', 'Lebanon',
+              'Malta', 'Northern Cyprus', 'Oman', 'Palestine', 'Portugal', 'Qatar',
+              'Saudi Arabia', 'Spain', 'Syria', 'Turkey', 'Turkmenistan', 'United Arab Emirates', 'Yemen']
+
+
+
+#%%
 print(np.nanmean(mor_2019.data))
 mmor = [np.nanmean(x.data) for x in mor_ref_output]
 #mmor3 = [np.nanmean(x.data) for x in pop_output_ssp3]
@@ -370,10 +389,46 @@ tmor_raw = [np.nansum(x.data) for x in mor_ref_output_raw]
 
 #%%
 
+tmor = []
+tmor_raw =[]
+
+cregrid = countries_regrid.regrid(mor_ref_output[0], iris.analysis.Nearest())
+
+for i in np.arange(len(mor_ref_output)):
+    df = country_total(mor_ref_output[i], cregrid)
+    df = df[~df['Location'].isin(not_in_afr)]
+    
+    x = np.nansum(df['mor'])
+    tmor.append(x)
+    
+    df = country_total(mor_ref_output_raw[i], cregrid)
+    df = df[~df['Location'].isin(not_in_afr)]
+    
+    x = np.nansum(df['mor'])
+    tmor_raw.append(x)
+
+
+#actual 200 and 2010
+df = country_total(m2000_regrid, countries_regrid)
+df = df[~df['Location'].isin(not_in_afr)]
+x2000 = np.nansum(df['mor'])
+
+df = country_total(m2010_regrid, countries_regrid)
+df = df[~df['Location'].isin(not_in_afr)]
+x2010 = np.nansum(df['mor'])
+
+df = country_total(m2019_regrid, countries_regrid)
+df = df[~df['Location'].isin(not_in_afr)]
+x2019 = np.nansum(df['mor'])
+
+#%%
+
+fig = plt.figure(figsize=(9,9))
+
 actual_x = [2000, 2010, 2019]
-actual_y = [np.nansum(m2000_regrid.data),
-            np.nansum(m2010_regrid.data),
-            np.nansum(m2019_regrid.data)]
+actual_y = [x2000,
+            x2010,
+            x2019]
 
 years = np.arange(2000, 2051)
 
@@ -383,7 +438,8 @@ plt.plot(years, tmor_raw, label = 'GBD Ref')
 plt.scatter(actual_x, actual_y, label = 'Actual')
 plt.xlabel('Year')
 plt.ylabel('Total African mortality (under 5)')
-plt.legend()
+plt.legend(bbox_to_anchor=(0.95, -0.1),ncol=3,frameon = False, handletextpad = 0.5)
 
-plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_GBDRef_corrected_regrid.png',
-         bbox_inches = 'tight', pad_inches = 0.3)
+
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_GBDRef_corrected_regrid_afonly.png',
+#         bbox_inches = 'tight', pad_inches = 0.3)
