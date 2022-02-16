@@ -137,8 +137,8 @@ pop_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr
 
 #daily mortality
 dmor_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
-dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
-dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
+dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2010_regrid.nc')
+dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2019_regrid.nc')
 
 #%% Create coefficient data
 
@@ -166,19 +166,28 @@ def calc_tdif(tavg, thres):
     return tdif
 
 tdif_hislist = []
+thres_list = []
 for cube in tas_his_years:
     thres_years = cube.extract(iris.Constraint(year = lambda cell: 1995 <= cell <= 2010))
     thres = thres_years.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
     tdif = calc_tdif(cube, thres)
+    thres_list.append(thres)
     tdif_hislist.append(tdif)
 
 tdif_damiplist = []
 for cube in tas_damip_years:
-    thres_years = cube.extract(iris.Constraint(year = lambda cell: 1995 <= cell <= 2010))
-    thres = thres_years.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
-    tdif = calc_tdif(cube, thres)
+    thres = [x for x in thres_list if tp.gcm(x) == tp.gcm(cube)]
+    if len(thres) > 1:
+        print('too long')
+    tdif = calc_tdif(cube, thres[0])
     tdif_damiplist.append(tdif)
-    
+ 
+#%% save thres
+
+#path = '/nfs/a321/earsch/CHAMNHA/output/thres_his/'
+#for cube in thres_list:
+#    save_name = 'historical'  + '_' + tp.gcm(cube) + '_' + '1995_2010'
+#    iris.save(cube, path + save_name + '.nc')
 
 #%% calculate attributable death per decade
 
@@ -233,8 +242,8 @@ def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort):
 #%% Run model
 
 #save path    
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_1/thres_model/'
-path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_1/thres_model/'
+path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_1/thres_hismodel/'
+path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_1/thres_hismodel/'
 
 dec_start = [1995, 2005, 2015]
 pop_list = [pop_2000, pop_2010, pop_2019]
