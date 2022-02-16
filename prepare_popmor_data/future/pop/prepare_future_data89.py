@@ -32,9 +32,9 @@ import copy
 
 #not regridded to CANeSM - units per km2
 countries = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/africa_countryname.nc')
-pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000.nc')
-pop2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010.nc')
-pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019.nc')
+pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
+pop2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010_regrid.nc')
+pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000_regrid.nc')
 
 gs = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/africa_cname_gridarea.nc')
 gs.convert_units('km2')
@@ -168,8 +168,19 @@ df_ssp_2010 = ssp2[ssp2['Year'] == 2010]
 both2010 = pd.merge(df_ssp_2010, df_2010, on = 'Area')
 both2010['dif'] = both2010['pop'] / both2010['Population']
 
+df_ssp_2015 = ssp2[ssp2['Year'] == 2015]
+df_ssp_2020 = ssp2[ssp2['Year'] == 2020]
+df_ssp_2020 = df_ssp_2020.merge(df_ssp_2015, on = 'Area')
+df_ssp_2020['yearly_change'] = (df_ssp_2020['Population_x'] -df_ssp_2020['Population_y']) / 5
+df_ssp_2020['y2019'] = df_ssp_2020['Population_y'] + df_ssp_2020['yearly_change'] * 4
+
+#adding 2019 doesn't make mcuh difference
+both_2019 = pd.merge(df_ssp_2020, df_2019, on = 'Area')
+both_2019['dif'] = both_2019['pop'] / both_2019['y2019']
+
 both_years = pd.merge(both2000, both2010, on = ['Area'])
-both_years['avg_dif'] = (both_years['dif_x'] + both_years['dif_y']) / 2
+both_years = pd.merge(both_years, both_2019, on = ['Area'])
+both_years['avg_dif'] = (both_years['dif_x'] + both_years['dif_y'] + both_years['dif']) / 3
 
 
 #%%
@@ -302,9 +313,81 @@ def distr_pop(pop_table, scenario_name):
 pop_output = distr_pop_bc(ssp2, 'ssp2', both_years)
 pop_output_raw = distr_pop(ssp2, 'ssp2')
 
-#%%
+#%% #calc frac chagne from 2000 for each ssp2 year
 
-check = country_total(pop_output[9], countries)
+base =  pop_output[4]
+
+fracchange=  iris.cube.CubeList()
+for cube in pop_output:
+    x = cube/base
+    fracchange.append(x)
+
+#apply frac change to correctly gridded input pop2090 data
+actual_pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000_regrid.nc')
+actual_pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
+
+
+fracchange_regrid =  iris.cube.CubeList()
+for cube in fracchange:
+    x = cube.regrid(actual_pop2019, iris.analysis.AreaWeighted())
+    fracchange_regrid.append(x)
+    
+avg_change = [np.nanmean(x.data) for x in fracchange_regrid]
+    
+
+act_mask = actual_pop2000.data.mask
+new_mask = fracchange_regrid[0].data.mask
+
+act_mask = np.where(act_mask == True, 1, 0)
+new_mask = np.where(new_mask == True, 1, 0)
+mask_dif = act_mask - new_mask
+
+new_dat = iris.cube.CubeList()
+for i in np.arange(len(fracchange_regrid)):
+    cube = fracchange_regrid[i]
+    
+    #change all gridcells, even masked ones
+    new_cube = actual_pop2000 * avg_change[i]
+    #change specifically ones have data for
+    x = cube * actual_pop2000
+
+    #where mask si the same, use fracchange * pop2000, otherwise use
+    # pop2000 * avg_change
+    new_cube.data = np.ma.where(mask_dif == 0, x.data, new_cube.data)    
+    new_dat.append(new_cube)
+    
+    
+    
+
+
+#%% regrid to tas
+
+#turn back into density
+pop_output_dens = []
+for cube in pop_output:
+    x = copy.deepcopy(cube)
+    x.data = x.data / gs.data
+    pop_output_dens.append(x)
+
+
+pop_output_regrid = []
+for cube in pop_output_dens:
+    x = cube.regrid(tas, iris.analysis.AreaWeighted())
+    pop_output_regrid.append(x)
+    
+    
+
+
+#so can convert to pop/mor per dridcell
+gs_tas = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/gridarea_CanESM5.nc')
+gs_tas.convert_units('km2')
+
+
+pop_output_tas_tot = []
+for cube in pop_output_regrid:
+    x = cube * gs_tas
+    pop_output_tas_tot.append(x)
+#check = country_total(pop_output[9], countries)
 
 #%%  check
         
