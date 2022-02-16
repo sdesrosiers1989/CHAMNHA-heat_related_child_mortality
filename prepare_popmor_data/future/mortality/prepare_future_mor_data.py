@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Process SSP future data for use
+Process future mortality data (GBD)
 
 -in csv format
 -link to coutnry raster(dictionary)
@@ -37,10 +37,11 @@ country_lookup = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/country_lo
 country_lookup['Name'][country_lookup['Name'] == 'Republic of the Congo'] = 'Congo'
 
 mor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2019_regrid.nc')
+mor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2010_regrid.nc')
+mor_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/total_mor_mf_01_2000_regrid.nc')
 
-mor_ref = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/vis_totaldeaths_reference_both_04.csv')
-mor_better = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/vis_totaldeaths_better_both_04.csv')
-mor_worse = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/vis_totaldeaths_worse_both_04.csv')
+#death rate per 100,000
+mor_ref = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/vis_ratedeath_reference_both_04.csv')
 
 
 #%% Create diciotnary of country codes and names
@@ -52,6 +53,59 @@ c_dict = dict(zip(country_lookup['Value'], country_lookup['Name']))
 
 countries_regrid = countries.regrid(popfrac_2019, iris.analysis.Nearest())
 
+popfrac_2019.coord('latitude').guess_bounds()
+popfrac_2019.coord('longitude').guess_bounds()
+m2000_regrid = mor_2000.regrid(popfrac_2019, iris.analysis.AreaWeighted())
+m2010_regrid = mor_2010.regrid(popfrac_2019, iris.analysis.AreaWeighted())
+
+
+present_day_morrate = mor_2019 / pop2019
+
+#%% Bias correct -finding dif between 2000, 2010 - avg diff
+
+
+def country_total(mor, country_raster):
+            
+    # get all country codes from map
+    country = copy.deepcopy(country_raster)
+    dat = country.data
+    vals = np.unique(dat)
+    vals = vals[vals.mask == False]
+    
+    df = pd.DataFrame(columns = ['Location', 'mor'])
+    
+    for val in vals:
+        val_raster = copy.deepcopy(country)
+        val_raster.data = np.where(val_raster.data == val, 1, np.nan)
+        
+        country_mor = mor * val_raster
+        
+        cmor_val = np.nansum(country_mor.data)
+        cname = c_dict[val]
+        
+        y = pd.DataFrame({'Location': cname,
+                          'mor': cmor_val},
+                            index = [0])
+        
+        df = df.append(y)
+        
+    return df
+    
+df_2000 = country_total(m2000_regrid, countries_regrid)
+df_2010 = country_total(m2010_regrid, countries_regrid)
+
+df_ref_2000 = mor_ref[mor_ref['Year'] == 2000]
+
+both2000 = pd.merge(df_ref_2000, df_2000, on = 'Location')
+both2000['dif'] = both2000['mor'] - both2000['Value']
+
+df_ref_2010 = mor_ref[mor_ref['Year'] == 2010]
+
+both2010 = pd.merge(df_ref_2010, df_2010, on = 'Area')
+both2010['dif'] = both2010['mor'] - both2010['Value']
+
+both_years = pd.merge(both2000, both2010, on = ['Area'])
+both_years['avg_dif'] = (both_years['dif_x'] + both_years['dif_y']) / 2
 
 #%% erplace country code with total under 5 population
 
@@ -98,9 +152,7 @@ def distr_dat(in_table, scenario_name):
     return output
 
 mor_ref_output = distr_dat(mor_ref, 'ref')
-mor_better_output = distr_dat(mor_better, 'better')
-mor_worse_output = distr_dat(mor_worse, 'worse')
-
+#pop_output_ssp3 = distr_pop(ssp3, 'ssp3')
 
 #%%  check
         
@@ -110,43 +162,25 @@ mor_levs = np.array([0, 1, 4, 6, 10, 15, 30]) * 365
 
 qplt.contourf(mor_2019, levels = mor_levs, extend = 'max', cmap = 'YlOrRd')
 qplt.contourf(mor_ref_output[0], levels = mor_levs, extend = 'max', cmap = 'YlOrRd')
-qplt.contourf(mor_better_output[0], levels = mor_levs, extend = 'max', cmap = 'YlOrRd')
-qplt.contourf(mor_worse_output[0], levels = mor_levs, extend = 'max', cmap = 'YlOrRd')
 
 #%%
 print(np.nanmean(mor_2019.data))
 mmor = [np.nanmean(x.data) for x in mor_ref_output]
-mmorb = [np.nanmean(x.data) for x in mor_better_output]
-mmorw = [np.nanmean(x.data) for x in mor_worse_output]
-
-mmor[0]
-mmorb[0]
-mmorw[0]
 #mmor3 = [np.nanmean(x.data) for x in pop_output_ssp3]
 
 
 print(np.nansum(mor_2019.data))
-tmor = [np.nansum(x.data) for x in mor_ref_output]
-tmorb = [np.nansum(x.data) for x in mor_better_output]
-tmorw = [np.nansum(x.data) for x in mor_worse_output]
-
-tmor[0]
-tmorb[0]
-tmorw[0]
+tmor = [np.nansum(x.data) for x in pop_output]
+#tmor3 = [np.nansum(x.data) for x in pop_output_ssp3]
 
 #%%
 
-years = np.unique(mor_ref['Year'])
+years = np.unique(ssp2['Year'])
 years = years[years >= 2020]
 
-plt.plot(years, tmor, label = 'Reference')
-plt.plot(years, tmorb, label = 'Better')
-plt.plot(years, tmorw, label = 'Worse')
-
-plt.scatter(2019, np.nansum(mor_2019.data), label = 'actual 2019')
+plt.plot(years, tpop, label = 'SSP2')
+plt.plot(years, tpop3, label = 'SSP3')
+plt.scatter(2019, np.nansum(pop2019.data), label = 'actual 2019')
 plt.xlabel('Year')
-plt.ylabel('Total under 5 mortality')
+plt.ylabel('Total African population (under 5)')
 plt.legend()
-
-#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/future_mortality.png',
-#         bbox_inches = 'tight', pad_inches = 0.3)
