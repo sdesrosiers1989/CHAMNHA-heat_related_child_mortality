@@ -30,7 +30,7 @@ import pandas as pd
 import copy
 #%%
 
-#not regridded to CANeSM - units per km2
+#units total per gridcell
 countries = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/africa_countryname.nc')
 pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
 pop2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010_regrid.nc')
@@ -68,59 +68,20 @@ tas = iris.load_cube(filenames[0])[0]
 
 c_dict = dict(zip(country_lookup['Value'], country_lookup['Name']))
 
-
-
 #%% regrid data
 
-min_lat = np.nanmin(pop2019.coord('latitude').points)
-max_lat = np.nanmax(pop2019.coord('latitude').points)
-min_lon = np.nanmin(pop2019.coord('longitude').points)
-max_lon = np.nanmax(pop2019.coord('longitude').points)
-
-def safrica_lat(input):
-    return min_lat  <= input <= max_lat 
-
-def safrica_long(input):
-    return min_lon  <= input <= max_lon 
-
-af_con = iris.Constraint(latitude = safrica_lat, longitude = safrica_long)
-
-countries = countries.extract(af_con)
-gs = gs.extract(af_con)
-
-countries.coord('latitude').guess_bounds()
-countries.coord('longitude').guess_bounds()
-gs.coord('latitude').guess_bounds()
-gs.coord('longitude').guess_bounds()
-
-cs = countries.coord_system(iris.coord_systems.CoordSystem)
-
-pop_regrid = []
-pop_list = [pop2000, pop2010, pop2019]
-for cube in pop_list:
-    try:
-        cube.coord('latitude').guess_bounds()
-        cube.coord('longitude').guess_bounds()
-    except:
-        print('Has bounds')
-    cube.coord('longitude').coord_system = cs
-    cube.coord('latitude').coord_system = cs
-    x = cube.regrid(countries, iris.analysis.AreaWeighted())
-    x = x * gs
-    pop_regrid.append(x)
-
-
+countries_regrid = countries.regrid(pop2019, iris.analysis.Nearest())
 
 #%%apply countries mask to pop data - cuts bits of some countries
 
-p2019_regrid = copy.deepcopy(pop_regrid[2])
-p2010_regrid = copy.deepcopy(pop_regrid[1])
-p2000_regrid = copy.deepcopy(pop_regrid[0])
+p2019_regrid = copy.deepcopy(pop2019)
+p2010_regrid = copy.deepcopy(pop2010)
+p2000_regrid = copy.deepcopy(pop2000)
 
 
-p2019_regrid.data = np.ma.masked_array(p2019_regrid.data, countries.data.mask)
-p2010_regrid.data = np.ma.masked_array(p2010_regrid.data, countries.data.mask)
-p2000_regrid.data = np.ma.masked_array(p2000_regrid.data, countries.data.mask)
+p2019_regrid.data = np.ma.masked_array(p2019_regrid.data, countries_regrid.data.mask)
+p2010_regrid.data = np.ma.masked_array(p2010_regrid.data, countries_regrid.data.mask)
+p2000_regrid.data = np.ma.masked_array(p2000_regrid.data, countries_regrid.data.mask)
 
 
 
@@ -154,9 +115,9 @@ def country_total(pop, country_raster):
         
     return df
     
-df_2000 = country_total(p2000_regrid, countries)
-df_2010 = country_total(p2010_regrid, countries)
-df_2019 = country_total(p2019_regrid, countries)
+df_2000 = country_total(p2000_regrid, countries_regrid)
+df_2010 = country_total(p2010_regrid, countries_regrid)
+df_2019 = country_total(p2019_regrid, countries_regrid)
 
 df_ssp_2000 = ssp2[ssp2['Year'] == 2000]
 
@@ -168,31 +129,13 @@ df_ssp_2010 = ssp2[ssp2['Year'] == 2010]
 both2010 = pd.merge(df_ssp_2010, df_2010, on = 'Area')
 both2010['dif'] = both2010['pop'] / both2010['Population']
 
-df_ssp_2015 = ssp2[ssp2['Year'] == 2015]
-df_ssp_2020 = ssp2[ssp2['Year'] == 2020]
-df_ssp_2020 = df_ssp_2020.merge(df_ssp_2015, on = 'Area')
-df_ssp_2020['yearly_change'] = (df_ssp_2020['Population_x'] -df_ssp_2020['Population_y']) / 5
-df_ssp_2020['y2019'] = df_ssp_2020['Population_y'] + df_ssp_2020['yearly_change'] * 4
-
-#adding 2019 doesn't make mcuh difference
-both_2019 = pd.merge(df_ssp_2020, df_2019, on = 'Area')
-both_2019['dif'] = both_2019['pop'] / both_2019['y2019']
-
 both_years = pd.merge(both2000, both2010, on = ['Area'])
-both_years = pd.merge(both_years, both_2019, on = ['Area'])
-both_years['avg_dif'] = (both_years['dif_x'] + both_years['dif_y'] + both_years['dif']) / 3
+both_years['avg_dif'] = (both_years['dif_x'] + both_years['dif_y']) / 2
 
-
-#%%
-
-c = df_ssp_2000['Area']
-c2 = df_2000['Area'].values
-
-[x for x in c if x not in c2]
 
 #%% recreate popfraoc
 
-country_totalpop = country_total(p2019_regrid, countries)
+country_totalpop = country_total(p2019_regrid, countries_regrid)
 cnames = country_totalpop['Area'].values
    
 popfrac_2019 = copy.deepcopy(p2019_regrid)
@@ -241,7 +184,7 @@ def distr_pop_bc(pop_table, scenario_name, bias_corr):
         
         cnames = np.unique(year_dat['Area'])
         
-        pop_year = copy.deepcopy(countries)
+        pop_year = copy.deepcopy(countries_regrid)
         
         # get all country codes from map
         dat = pop_year.data
@@ -264,11 +207,11 @@ def distr_pop_bc(pop_table, scenario_name, bias_corr):
                 pop_year_frac.data = pop_year_frac.data*popfrac_2019.data
                 
         #save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR3.nc'
-        #pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
+        pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
         
         #iris.save(pop_year_frac_regrid, save_path + save_name)
         
-        pop_output.append(pop_year_frac)
+        pop_output.append(pop_year_frac_regrid)
     return pop_output
 
 def distr_pop(pop_table, scenario_name):
@@ -284,7 +227,7 @@ def distr_pop(pop_table, scenario_name):
         year_dat = pop_table[pop_table['Year'] == y]
         cnames = np.unique(year_dat['Area'])
         
-        pop_year = copy.deepcopy(countries)
+        pop_year = copy.deepcopy(countries_regrid)
         
         # get all country codes from map
         dat = pop_year.data
@@ -305,89 +248,15 @@ def distr_pop(pop_table, scenario_name):
                 pop_year_frac = copy.deepcopy(pop_year)
                 pop_year_frac.data = pop_year_frac.data*popfrac_2019.data
             
-        #pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
-        pop_output.append(pop_year_frac)
+        pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
+        pop_output.append(pop_year_frac_regrid)
     return pop_output
 
 
 pop_output = distr_pop_bc(ssp2, 'ssp2', both_years)
 pop_output_raw = distr_pop(ssp2, 'ssp2')
 
-#%% #calc frac chagne from 2000 for each ssp2 year
 
-base =  pop_output[4]
-
-fracchange=  iris.cube.CubeList()
-for cube in pop_output:
-    x = cube/base
-    fracchange.append(x)
-
-#apply frac change to correctly gridded input pop2090 data
-actual_pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000_regrid.nc')
-actual_pop2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
-
-
-fracchange_regrid =  iris.cube.CubeList()
-for cube in fracchange:
-    x = cube.regrid(actual_pop2019, iris.analysis.AreaWeighted())
-    fracchange_regrid.append(x)
-    
-avg_change = [np.nanmean(x.data) for x in fracchange_regrid]
-    
-
-act_mask = actual_pop2000.data.mask
-new_mask = fracchange_regrid[0].data.mask
-
-act_mask = np.where(act_mask == True, 1, 0)
-new_mask = np.where(new_mask == True, 1, 0)
-mask_dif = act_mask - new_mask
-
-new_dat = iris.cube.CubeList()
-for i in np.arange(len(fracchange_regrid)):
-    cube = fracchange_regrid[i]
-    
-    #change all gridcells, even masked ones
-    new_cube = actual_pop2000 * avg_change[i]
-    #change specifically ones have data for
-    x = cube * actual_pop2000
-
-    #where mask si the same, use fracchange * pop2000, otherwise use
-    # pop2000 * avg_change
-    new_cube.data = np.ma.where(mask_dif == 0, x.data, new_cube.data)    
-    new_dat.append(new_cube)
-    
-    
-    
-
-
-#%% regrid to tas
-
-#turn back into density
-pop_output_dens = []
-for cube in pop_output:
-    x = copy.deepcopy(cube)
-    x.data = x.data / gs.data
-    pop_output_dens.append(x)
-
-
-pop_output_regrid = []
-for cube in pop_output_dens:
-    x = cube.regrid(tas, iris.analysis.AreaWeighted())
-    pop_output_regrid.append(x)
-    
-    
-
-
-#so can convert to pop/mor per dridcell
-gs_tas = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/gridarea_CanESM5.nc')
-gs_tas.convert_units('km2')
-
-
-pop_output_tas_tot = []
-for cube in pop_output_regrid:
-    x = cube * gs_tas
-    pop_output_tas_tot.append(x)
-#check = country_total(pop_output[9], countries)
 
 #%%  check
         
@@ -422,29 +291,9 @@ cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
                     iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
 
 cru_tas = cru_tas[0][0]
-cru_tas = cru_tas.regrid(pop2019_regrid, iris.analysis.Linear())
-
-#%%
-
-pop_2019.data.mask[np.isnan(countries.data)] = True
-pop_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop2019.data)
-
-pop_2045.data.mask[np.isnan(countries.data)] = True
-pop_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop2045.data)
+cru_tas = cru_tas.regrid(pop2019, iris.analysis.Linear())
 
 
-mor_2019.data.mask[np.isnan(countries.data)] = True
-mor_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), mor_2019.data)
-
-mor_2045.data.mask[np.isnan(countries.data)] = True
-mor_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), mor_2045.data)
-
-rmor_2019.data.mask[np.isnan(countries.data)] = True
-rmor_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), rmor_2019.data)
-
-rmor_2045.data.mask[np.isnan(countries.data)] = True
-rmor_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), rmor_2045.data)
-    
 
 #%%
 print(np.nanmean(pop2019.data))
