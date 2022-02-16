@@ -45,6 +45,14 @@ ssp2 = pd.read_csv('/nfs/a321/earsch/CHAMNHA/input_data/pop/future/ssp2_allcount
 ssp2['Population'] = ssp2['Population'] * 1000
 
 
+
+
+#regrid to CMIP6
+scen = '119'
+path = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/end/'
+filenames = glob.glob(path + '*' + scen + '.nc')
+tas = iris.load_cube(filenames[0])[0]
+
 #%% Create diciotnary of country codes and names
 
 c_dict = dict(zip(country_lookup['Value'], country_lookup['Name']))
@@ -195,9 +203,11 @@ def distr_pop_bc(pop_table, scenario_name, bias_corr):
                 pop_year_frac.data = pop_year_frac.data*popfrac_2019.data
                 
         save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR.nc'
-        iris.save(pop_year_frac, save_path + save_name)
+        pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
         
-        pop_output.append(pop_year_frac)
+        iris.save(pop_year_frac_regrid, save_path + save_name)
+        
+        pop_output.append(pop_year_frac_regrid)
     return pop_output
 
 def distr_pop(pop_table, scenario_name):
@@ -234,8 +244,8 @@ def distr_pop(pop_table, scenario_name):
                 pop_year_frac = copy.deepcopy(pop_year)
                 pop_year_frac.data = pop_year_frac.data*popfrac_2019.data
             
-        
-        pop_output.append(pop_year_frac)
+        pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
+        pop_output.append(pop_year_frac_regrid)
     return pop_output
 
 pop_output = distr_pop_bc(ssp2, 'ssp2', both_years)
@@ -283,5 +293,5 @@ plt.xlabel('Year')
 plt.ylabel('Total African population (under 5)')
 plt.legend()
 
-plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected.png',
+plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid.png',
          bbox_inches = 'tight', pad_inches = 0.3)
