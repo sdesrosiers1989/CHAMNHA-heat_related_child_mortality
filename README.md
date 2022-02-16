@@ -47,8 +47,8 @@ Children are defined here as under 5, and the scripts and input data are based o
    - Outputs are the annual heat related mortality (individual years), and as a mean per decade, and * *e*, which is the fraction of total mortality due to heat, and is required in the decomposition scripts
    - Scripts (healthburden_model):
      - historical: 1995 - 2014, historical scenario from CMIP6, and the appropriate population and mortality data. Separate scripts for coeff = 0.61 and 1.0
-     - damip: 1995 - 2020, with 1995 - 2014 being the hist-nat scenario, and 2015 - 2020 being ssp245.
-     - future: 2020 - 2050
+     - damip: 1995 - 2020, with 1995 - 2014 being the hist-nat scenario, and 2015 - 2020 being ssp245. Separate file for FGOALs model.
+     - future: 2020 - 2050, using future population and mortality
 7. Decompose into components
    - Decompose components of change in HRCM into change due to climate change (temperature increases), population (population growth) and all-cause mortality (declining)
    - Based on the method of Das Gupta (1993)
@@ -58,6 +58,8 @@ Children are defined here as under 5, and the scripts and input data are based o
      - calc_components_CC.py - for climate change experiments, but also takes csv file input from calc_components.py to create plots
 ## Branches
 - master: use this one for all analysis
+- pop2019:
+  - used for checking impact of using 2019 population for 2020 - 2050
 - popmor_dif_biascorr: <br />
   - Created when checking the impact of different bias-correction methods for future population and mortality on the HRCM and decomposition results. Impact of different methods minimal, so stayed used original, simpler method.
 - mor_rate:
