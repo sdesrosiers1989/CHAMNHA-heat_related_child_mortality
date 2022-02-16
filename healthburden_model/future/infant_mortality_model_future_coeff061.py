@@ -40,9 +40,9 @@ import tanzania1 as tp
 #%% Import CMIP6 bias corrected data
     
 #### temp
-scen = '585'
+#scen = '585'
 #scen = '245'
-#scen = '119'
+scen = '119'
 
 #importing just to geg et hist-nat mdoels - already ran his for them
 path = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/end/'
@@ -54,13 +54,12 @@ for file in filenames:
 
     
 #obs - used to get threshold
-cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
-                    iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
-
-cru_tas = cru_tas.concatenate_cube()
-iris.coord_categorisation.add_year(cru_tas, 'time')
-cru_tas = cru_tas.extract(iris.Constraint(year= lambda cell: 1995 <= cell <= 2010))
-cru_tas = cru_tas.regrid(tas[0][0], iris.analysis.Linear())
+path = '/nfs/a321/earsch/CHAMNHA/output/thres_his/'
+filenames = glob.glob(path + 'historical' + '*' + '1995_2010.nc')
+thres_list = iris.cube.CubeList()
+for file in filenames:
+    x = iris.load_cube(file)
+    thres_list.append(x)
     
 #%% Select years of interest 1995 - 2020
 
@@ -80,7 +79,7 @@ pop_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr
 
 #daily mortality
     #mor used for last decade of historical
-dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
+dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2010_regrid.nc')
 
 #%% Create coefficient data
 
@@ -95,9 +94,7 @@ per_c = 0.61
 c = math.log((per_c/100) + 1)
 coeff = place_holder(tas[0][0], c) 
 
-#Threshold
-thres = cru_tas.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
-thres.units = 'celsius'
+
 
 #%% calculate temp diff with threshold
 
@@ -162,12 +159,12 @@ def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort):
 #%% Run model
 
 #save path    
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_75per/future/'
-path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_75per/future/'
+path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/future/'
+path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_hismodel/future/'
 
 dec_start = np.arange(2020, 2100, 10)
 
-for i in np.arange(3, len(dec_start)):
+for i in np.arange(2, len(dec_start)):
     dstart = dec_start[i] # dec start and dec end used for subsetting climate data
     dec_end = dstart + 10  #goes to 2015, but extracted as < not <=, so will be same time period as period 2 of damip historical mods
     period = str(dstart) + str(dec_end - 1)
@@ -185,9 +182,14 @@ for i in np.arange(3, len(dec_start)):
 
 
     for j in np.arange(0, len(tas_years)):
-        cube = calc_tdif(tas_years[j], thres)
+        gcm = tp.gcm(cube)
         
-        print(j, tp.gcm(cube))
+        thres = [x for x in thres_list if tp.gcm(x) == gcm]
+        if len(thres) > 1:
+            print('thres too long')
+        cube = calc_tdif(tas_years[j], thres[0])
+        
+        print(j, gcm)
         
         ahd_indyear, ahd_mean = ann_death_per_decade(cube, dstart, dec_end, pop_ratio, mor)
         
