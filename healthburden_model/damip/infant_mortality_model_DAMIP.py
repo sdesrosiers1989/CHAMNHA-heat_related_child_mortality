@@ -42,35 +42,25 @@ import functions as f
     
 #### temp
 path = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/his/'
-filenames = glob.glob(path + '*FGOALS*.nc')
+filenames = glob.glob(path + '*.nc')
 tas = iris.cube.CubeList()
 for file in filenames:
     x = iris.load_cube(file)
-    x = x.extract(iris.Constraint(year= lambda cell: cell <= 2014))
     tas.append(x)
             
 path = '/nfs/a321/earsch/Tanga/Data/CMIP6/bias_corr/CHAMNHA/tas/end/'
 tas_damip = iris.cube.CubeList()
-filenames = glob.glob(path + '*FGOALS**hist-nat.nc')
+filenames = glob.glob(path + '*hist-nat.nc')
 for file in filenames:
     x = iris.load_cube(file)
     tas_damip.append(x)
 
 tas_245 = iris.cube.CubeList()
-filenames = glob.glob(path + '*FGOALS*ssp245.nc')
+filenames = glob.glob(path + '*ssp245.nc')
 for file in filenames:
     x = iris.load_cube(file)
-    x = x.extract(iris.Constraint(year= lambda cell: cell >= 2015))
     tas_245.append(x)
     
-#obs - used to get threshold
-cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
-                    iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
-
-cru_tas = cru_tas.concatenate_cube()
-iris.coord_categorisation.add_year(cru_tas, 'time')
-cru_tas = cru_tas.extract(iris.Constraint(year= lambda cell: 1995 <= cell <= 2010))
-cru_tas = cru_tas.regrid(tas[0][0], iris.analysis.Linear())
 
 #%% Limit historical and ssp245 models to same models in DAMIP
 
@@ -148,15 +138,11 @@ dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/proces
 
 
 #Coeff
-per_c = 0.61
-per_c = 0.805
 #per_c = 1.0
+per_c = 0.61
 c = math.log((per_c/100) + 1)
 coeff = f.place_holder(tas[0][0], c) 
 
-#Threshold
-#thres = cru_tas.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
-#thres.units = 'celsius'
 
 #%% calculate temp diff with threshold
 
@@ -201,7 +187,7 @@ dec_start = [1995, 2005, 2015]
 pop_list = [pop_2000, pop_2010, pop_2019]
 mor_list = [dmor_2000, dmor_2010, dmor_2019]
 
-for i in np.arange(2, len(dec_start)):
+for i in np.arange(0, len(dec_start)):
     dstart = dec_start[i] # dec start and dec end used for subsetting climate data
     dec_end = dstart + 10  
     period = str(dstart) + str(dec_end - 1)
@@ -230,8 +216,8 @@ for i in np.arange(2, len(dec_start)):
                 
         save_name = sim  + '_' + tp.gcm(ahd_mean) + '_' + period
 
-        iris.save(ahd_indyear, path_indyears + save_name + '.nc')
-        iris.save(ahd_mean, path + save_name + '.nc')
+        #iris.save(ahd_indyear, path_indyears + save_name + '.nc')
+        #iris.save(ahd_mean, path + save_name + '.nc')
         iris.save(e, path_e + save_name + '.nc')
 
         print(save_name, 'saved')
