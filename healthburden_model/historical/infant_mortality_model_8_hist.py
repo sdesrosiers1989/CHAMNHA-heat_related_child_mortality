@@ -91,7 +91,7 @@ pop_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr
 
 #daily mortality
 dmor_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
-dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
+dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2010_regrid.nc')
 #dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2000_regrid.nc')
 
 #%% Create coefficient data
@@ -104,6 +104,7 @@ def place_holder(base, dat):
 
 #Coeff
 per_c = 0.61
+#per_c= 1.0
 c = math.log((per_c/100) + 1)
 coeff = place_holder(tas[0][0], c) 
 
@@ -119,13 +120,22 @@ def calc_tdif(tavg, thres):
     tdif.data = np.ma.where(tdif.data < 0, 0, tdif.data)
     return tdif
 
+
 tdif_hislist = []
+thres_list = []
 for cube in tas_his_years:
+    thres_years = cube.extract(iris.Constraint(year = lambda cell: 1995 <= cell <= 2010))
+    thres = thres_years.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
     tdif = calc_tdif(cube, thres)
+    thres_list.append(thres)
     tdif_hislist.append(tdif)
 
+#%% save thres
 
-    
+path = '/nfs/a321/earsch/CHAMNHA/output/thres_his/'
+for cube in thres_list:
+    save_name = 'historical'  + '_' + tp.gcm(cube) + '_' + '1995_2010'
+    iris.save(cube, path + save_name + '.nc')    
 
 #%% calculate attributable death per decade
 
@@ -180,8 +190,8 @@ def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort):
 #%% Run model
 
 #save path    
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_75per/'
-path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_75per/'
+path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_model/'
+path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_model/'
 
 dec_start = [1995, 2005]
 pop_list = [pop_2000, pop_2010]
