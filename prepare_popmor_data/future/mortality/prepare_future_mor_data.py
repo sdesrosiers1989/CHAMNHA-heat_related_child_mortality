@@ -342,7 +342,11 @@ mor_ref_output_raw = distr_dat(mor_ref_ex, 'ref')
 #%% Modify pop2019
  #calc frac chagne from 2000 for each ssp2 year
 
-base =  mor_ref_output[0]
+
+years = np.unique(mor_ref_ex['Year'])
+years = years[years >= 2000]
+
+base =  mor_ref_output[19]
 
 fracchange=  iris.cube.CubeList()
 for cube in mor_ref_output:
@@ -367,7 +371,7 @@ base_mor = np.nansum(base.data)
 avg_change = total_mor / base_mor
     
 
-act_mask = actual_mor2000.data.mask
+act_mask = actual_mor2019.data.mask
 new_mask = fracchange_regrid[0].data.mask
 
 act_mask = np.where(act_mask == True, 1, 0)
@@ -379,9 +383,9 @@ for i in np.arange(len(fracchange_regrid)):
     cube = fracchange_regrid[i]
     
     #change all gridcells, even masked ones
-    new_cube = actual_mor2000 * avg_change[i]
+    new_cube = actual_mor2019 * avg_change[i]
     #change specifically ones have data for
-    x = cube * actual_mor2000
+    x = cube * actual_mor2019
 
     #where mask si the same, use fracchange * pop2000, otherwise use
     # pop2000 * avg_change
@@ -389,15 +393,13 @@ for i in np.arange(len(fracchange_regrid)):
     new_dat.append(new_cube)
     
 
-years = np.unique(mor_ref_ex['Year'])
-years = years[years >= 2000]
 
 save_path = '/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/processed/'
 
 
 for i in np.arange(len(new_dat)):
     y = years[i]
-    save_name = 'ref' + '_' + str(y)[0:4] + '_04_totalmor_mf_BIASCORR2.nc' 
+    save_name = 'ref' + '_' + str(y)[0:4] + '_04_totalmor_mf_BIASCORR3.nc' 
     iris.save(new_dat[i], save_path + save_name)
 
 
