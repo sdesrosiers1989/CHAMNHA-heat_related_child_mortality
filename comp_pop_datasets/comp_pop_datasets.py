@@ -38,7 +38,8 @@ pop2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_
 pop2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2000_regrid.nc')
 
 
-gpw_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/gpw_total_under5pop_2010.nc')
+gpw_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/gpw_both_densityperkm_0_4_2010.nc')
+gpw_2010_regrid = iris.save(gp2010_regrid, '/nfs/a321/earsch/CHAMNHA/input_data/pop/gpw_both_densityperkm_0_4_2010_regrid.nc')
 
 
 #change llok up anmes to match ssp
