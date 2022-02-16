@@ -20,6 +20,8 @@ Children are defined here as under 5, and the scripts and input data are based o
    - biascorr/tas/tas_biascorr_CMIP6 (note that scripts are available for tmax, tmin, as well as the CORDEX and CP4A/P25 UM models, however the scripts here all are based on daily tas, and CMIP6 data
    -  
 4. Preprae input pop/mortality data
+   - point 1
+   - Compare different population and mortality input datasets (comp_pop_datasets) - Optional
 5. Run health burden model
 6. Decompose into components
    - Decompose components of change in HRCM into change due to climate change (temperature increases), population (population growth) and all-cause mortality (declining)
