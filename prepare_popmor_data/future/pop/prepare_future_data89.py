@@ -122,18 +122,6 @@ p2019_regrid.data = np.ma.masked_array(p2019_regrid.data, countries.data.mask)
 p2010_regrid.data = np.ma.masked_array(p2010_regrid.data, countries.data.mask)
 p2000_regrid.data = np.ma.masked_array(p2000_regrid.data, countries.data.mask)
 
-#%% check if missing gridcells
-
-y = copy.deepcopy(countries_regrid)
-y.data = np.ma.where(y.data > 0, 1, y.data)
-
-z = copy.deepcopy(p2019)
-z.data = np.ma.where(z.data >= 0, 1, z.data)
-
-comp = copy.deepcopy(z)
-comp.data = comp.data - y.data
-
-qplt.contourf(comp)
 
 
 #%% Bias correct -finding dif between 2000, 2010 - avg diff
@@ -166,24 +154,23 @@ def country_total(pop, country_raster):
         
     return df
     
-df_2000 = country_total(p2000, countries_regrid)
-df_2010 = country_total(p2010, countries_regrid)
-df_2019 = country_total(p2019, countries_regrid)
+df_2000 = country_total(p2000_regrid, countries)
+df_2010 = country_total(p2010_regrid, countries)
+df_2019 = country_total(p2019_regrid, countries)
 
 df_ssp_2000 = ssp2[ssp2['Year'] == 2000]
 
 both2000 = pd.merge(df_ssp_2000, df_2000, on = 'Area')
-both2000['dif'] = both2000['pop'] - both2000['Population']
+both2000['dif'] = both2000['pop'] / both2000['Population']
 
 df_ssp_2010 = ssp2[ssp2['Year'] == 2010]
 
 both2010 = pd.merge(df_ssp_2010, df_2010, on = 'Area')
-both2010['dif'] = both2010['pop'] - both2010['Population']
+both2010['dif'] = both2010['pop'] / both2010['Population']
 
 both_years = pd.merge(both2000, both2010, on = ['Area'])
 both_years['avg_dif'] = (both_years['dif_x'] + both_years['dif_y']) / 2
 
-x = country_total(popfrac_2019, countries_regrid)
 
 #%%
 
@@ -194,7 +181,7 @@ c2 = df_2000['Area'].values
 
 #%% recreate popfraoc
 
-country_totalpop = country_total(p2019_regrid, countries_regrid)
+country_totalpop = country_total(p2019_regrid, countries)
 cnames = country_totalpop['Area'].values
    
 popfrac_2019 = copy.deepcopy(p2019_regrid)
@@ -209,7 +196,7 @@ vals = vals[vals.mask == False]
 for i in np.arange(dims[0]):
     for j in np.arange(dims[1]):
         
-        val = countries_regrid[i,j].data
+        val = countries[i,j].data
         if np.ma.is_masked(val) == False:
             c_name = c_dict[int(val)]
             if c_name in cnames:
@@ -238,12 +225,12 @@ def distr_pop_bc(pop_table, scenario_name, bias_corr):
         
         #adjust
         year_dat_merge = pd.merge(year_dat, bias_corr, on = 'Area')
-        year_dat_merge['Population_corr'] = year_dat_merge['Population'] + year_dat_merge['avg_dif']
+        year_dat_merge['Population_corr'] = year_dat_merge['Population'] * year_dat_merge['avg_dif']
         
         
         cnames = np.unique(year_dat['Area'])
         
-        pop_year = copy.deepcopy(countries_regrid)
+        pop_year = copy.deepcopy(countries)
         
         # get all country codes from map
         dat = pop_year.data
@@ -252,24 +239,25 @@ def distr_pop_bc(pop_table, scenario_name, bias_corr):
         
         for val in vals:
             c_name = c_dict[val]
-            print(c_name)
+            #print(c_name)
             
             if c_name in cnames:
         
                 replace_val = year_dat_merge[year_dat_merge['Area'] == c_name]['Population_corr'].values
-                print(replace_val)
+                if replace_val < 0:
+                    print(replace_val)
                 
                 pop_year.data = np.where(pop_year.data == val, replace_val, pop_year.data)
                 
                 pop_year_frac = copy.deepcopy(pop_year)
                 pop_year_frac.data = pop_year_frac.data*popfrac_2019.data
                 
-        save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR2.nc'
-        pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
+        #save_name = scenario_name + '_' + str(y) + '_04population_mf_BIASCORR3.nc'
+        #pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
         
-        iris.save(pop_year_frac_regrid, save_path + save_name)
+        #iris.save(pop_year_frac_regrid, save_path + save_name)
         
-        pop_output.append(pop_year_frac_regrid)
+        pop_output.append(pop_year_frac)
     return pop_output
 
 def distr_pop(pop_table, scenario_name):
@@ -285,7 +273,7 @@ def distr_pop(pop_table, scenario_name):
         year_dat = pop_table[pop_table['Year'] == y]
         cnames = np.unique(year_dat['Area'])
         
-        pop_year = copy.deepcopy(countries_regrid)
+        pop_year = copy.deepcopy(countries)
         
         # get all country codes from map
         dat = pop_year.data
@@ -294,30 +282,29 @@ def distr_pop(pop_table, scenario_name):
         
         for val in vals:
             c_name = c_dict[val]
-            print(c_name)
+            #print(c_name)
             
             if c_name in cnames:
         
                 replace_val = year_dat[year_dat['Area'] == c_name]['Population'].values
-                print(replace_val)
+                #print(replace_val)
                 
                 pop_year.data = np.where(pop_year.data == val, replace_val, pop_year.data)
                 
                 pop_year_frac = copy.deepcopy(pop_year)
                 pop_year_frac.data = pop_year_frac.data*popfrac_2019.data
             
-        pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
-        pop_output.append(pop_year_frac_regrid)
+        #pop_year_frac_regrid = pop_year_frac.regrid(tas, iris.analysis.AreaWeighted())
+        pop_output.append(pop_year_frac)
     return pop_output
+
 
 pop_output = distr_pop_bc(ssp2, 'ssp2', both_years)
 pop_output_raw = distr_pop(ssp2, 'ssp2')
 
 #%%
 
-pop_output[9]= pop_output[9].regrid(countries_regrid, iris.analysis.AreaWeighted())
-
-check = country_total(pop_output[9], countries_regrid)
+check = country_total(pop_output[9], countries)
 
 #%%  check
         
@@ -352,15 +339,15 @@ cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
                     iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
 
 cru_tas = cru_tas[0][0]
-cru_tas = cru_tas.regrid(pop_2019, iris.analysis.Linear())
+cru_tas = cru_tas.regrid(pop2019_regrid, iris.analysis.Linear())
 
 #%%
 
 pop_2019.data.mask[np.isnan(countries.data)] = True
-pop_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop_2019.data)
+pop_2019.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop2019.data)
 
 pop_2045.data.mask[np.isnan(countries.data)] = True
-pop_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop_2045.data)
+pop_2045.data = np.ma.masked_where(np.ma.getmask(cru_tas.data), pop2045.data)
 
 
 mor_2019.data.mask[np.isnan(countries.data)] = True
@@ -405,5 +392,5 @@ plt.xlabel('Year')
 plt.ylabel('Total African population (under 5)')
 plt.legend()
 
-plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid.png',
-         bbox_inches = 'tight', pad_inches = 0.3)
+#plt.savefig('/nfs/see-fs-02_users/earsch/Documents/Leeds/Inputdata_SSP2_corrected_tasgrid.png',
+#         bbox_inches = 'tight', pad_inches = 0.3)
