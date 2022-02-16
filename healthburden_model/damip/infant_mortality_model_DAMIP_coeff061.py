@@ -275,53 +275,53 @@ def apply_model(dec_list, pop_list, mor_list, cube_list, path, path_indyears, co
             print(save_name, 'saved')
 
     
-#%%
-#save path    
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/decomp_attribution/'
-path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_hismodel/decomp_attribution/'
+#%% HIST NAT compare to HISTNAT
+#save path   
+            
+path0 = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/decomp_attribution2/'
+path_indyears0 = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_hismodel/decomp_attribution2/'
+cube_list = tdif_damiplist
 
-dec_start = [2005, 2015]
+periods = ['2010', '2020']
 code_list = ['e2p1m1', 'e2p2m1', 'e2p1m2',
-             'e1p1m1', 'e1p2m1', 'e1p1m2']
+             'e1p1m1', 'e1p2m1', 'e1p1m2',
+             'e1p2m2']
 
-#e_list = ['e1', 'e2']
-#p_list = ['p1', 'p2']
-#m_list = ['m1', 'm2']
+pop_lists = [pop_2010, pop_2019]
+dmor_lists = [dmor_2010, dmor_2019]
+d_lists = [2005, 2015]
 
-#for e in e_list:
-#    for p in p_list:
-#        for m in m_list:
-#           print(e, p, m)
-#
+for p in np.arange(1, len(periods)):
+    period = periods[p]
+    path = path0 + period + '/'
+    path_indyears = path_indyears0 + period + '/'
 
-list_of_sims = [tdif_hislist, tdif_damiplist]
-
-for i in np.arange(len(code_list)):
-    code = code_list[i]
-    print(i, code)
-    
-    if 'p2' in code:
-        pop_list = [pop_2010, pop_2019]
-        #print('Using p2', np.nanmean(pop_list[0].data), np.nanmean(pop_list[1].data))      
-    if 'p1' in code:
-        pop_list = [pop_2000, pop_2000]
-        #print('Using p1', np.nanmean(pop_list[0].data), np.nanmean(pop_list[1].data))
-               
-    if 'm2' in code:
-        mor_list = [dmor_2010, dmor_2019]
-        #print('Using m2', np.nanmean(mor_list[0].data), np.nanmean(mor_list[1].data))
-    if 'm1' in code:
-        mor_list = [dmor_2000, dmor_2000]
-        #print('Using m1', np.nanmean(mor_list[0].data), np.nanmean(mor_list[1].data))
+    for i in np.arange(0,2):
+        code = code_list[i]
+        print(i, code)
         
-    if 'e2' in code:
-        cube_list = tdif_hislist
-        #print('Using e2', cube_list[0].coord('sim').points[0])
-    if 'e1' in code:
-        cube_list = tdif_damiplist 
-        #print('Using e1', cube_list[0].coord('sim').points[0])
-         
-        
-    apply_model(dec_start, pop_list, mor_list, cube_list, path, path_indyears, code)
+        if 'p2' in code:
+            pop_list = [pop_lists[p]]
+            #print('Using p2', np.nanmean(pop_list[0].data), np.nanmean(pop_list[1].data))      
+        if 'p1' in code:
+            pop_list = [pop_2000]
+            #print('Using p1', np.nanmean(pop_list[0].data), np.nanmean(pop_list[1].data))
+                   
+        if 'm2' in code:
+            mor_list = [dmor_lists[p]]
+            #print('Using m2', np.nanmean(mor_list[0].data), np.nanmean(mor_list[1].data))
+        if 'm1' in code:
+            mor_list = [dmor_2000]
+            #print('Using m1', np.nanmean(mor_list[0].data), np.nanmean(mor_list[1].data))
+            
+        if 'e2' in code:
+            dec_start = [d_lists[p]]
+            #print('Using e2', cube_list[0].coord('sim').points[0])
+        if 'e1' in code:
+            dec_start = [1995]
+            #print('Using e1', cube_list[0].coord('sim').points[0])
+             
+            
+        apply_model(dec_start, pop_list, mor_list, cube_list, path, path_indyears, code)
 
 
