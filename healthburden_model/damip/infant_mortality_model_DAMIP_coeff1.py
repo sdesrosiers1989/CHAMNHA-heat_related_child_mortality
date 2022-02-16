@@ -34,7 +34,8 @@ import glob
 import sys
 sys.path.append('/nfs/see-fs-02_users/earsch/Documents/Leeds/Repos/Tanga/Plot_functions')
 import tanzania1 as tp
-
+sys.path.append('/nfs/see-fs-02_users/earsch/Documents/Leeds/Repos/CHAMNHA/functions')
+import functions as f
         
 
 #%% Import CMIP6 bias corrected data
@@ -142,16 +143,12 @@ dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/proces
 
 #%% Create coefficient data
 
-def place_holder(base, dat):
-    new_dat = copy.deepcopy(base)
-    new_dat.data = np.where(~np.isnan(new_dat.data), dat, new_dat.data)
-    new_dat.data = ma.masked_array(new_dat.data, mask = base.data.mask)
-    return new_dat
+
 
 #Coeff
 per_c = 1.0
 c = math.log((per_c/100) + 1)
-coeff = place_holder(tas[0][0], c) 
+coeff = f.place_holder(tas[0][0], c) 
 
 #Threshold
 #thres = cru_tas.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
@@ -159,18 +156,14 @@ coeff = place_holder(tas[0][0], c)
 
 #%% calculate temp diff with threshold
 
-def calc_tdif(tavg, thres):
-    
-    tdif = iris.analysis.maths.subtract(tavg, thres.data)
-    tdif.data = np.ma.where(tdif.data < 0, 0, tdif.data)
-    return tdif
+
 
 tdif_hislist = []
 thres_list = []
 for cube in tas_his_years:
     thres_years = cube.extract(iris.Constraint(year = lambda cell: 1995 <= cell <= 2010))
     thres = thres_years.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
-    tdif = calc_tdif(cube, thres)
+    tdif = f.calc_tdif(cube, thres)
     thres_list.append(thres)
     tdif_hislist.append(tdif)
 
@@ -179,7 +172,7 @@ for cube in tas_damip_years:
     thres = [x for x in thres_list if tp.gcm(x) == tp.gcm(cube)]
     if len(thres) > 1:
         print('too long')
-    tdif = calc_tdif(cube, thres[0])
+    tdif = f.calc_tdif(cube, thres[0])
     tdif_damiplist.append(tdif)
  
 #%% save thres
@@ -189,53 +182,6 @@ for cube in tas_damip_years:
 #    save_name = 'historical'  + '_' + tp.gcm(cube) + '_' + '1995_2010'
 #    iris.save(cube, path + save_name + '.nc')
 
-#%% calculate attributable death per decade
-
-
-def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort):
-    b_dec = temp.extract(iris.Constraint(year= lambda cell: dec_start <= cell < dec_end))
-    dims =  b_dec.shape
-    
-    #cycle through each year in decade
-    #for each gridcell, extract daily data
-    #from daily tdif (difference between threshold and tavg), calcualte daily att deaths
-    #sum daily att deaths to get total annual deaths from heat per year
-    #calculate mean annual deaths per year (for the decade of interest)
-    
-    year_output = iris.cube.CubeList()
-    years = np.unique(b_dec.coord('year').points)
-    
-    for y in years:
-        b_year = b_dec.extract(iris.Constraint(year= lambda cell: cell == y))
-        output = copy.deepcopy(b_year)
-        print(y)
-        
-        
-        for j in np.arange(dims[1]):
-            for k in np.arange(dims[2]):
-                b_day = b_year[:, j, k]
-                   
-                if np.isnan(b_day[0].data) == False: # if not masked
-                    
-                    
-                    p_b = pop_ratio[j,k].data #ratio of future to baseline pop for gridcell
-                    c = coeff[j,k].data # coeff for gridcell
-                    m_loc = davg_mort[j, k].data
-                    
-                    #sensitive to placement of brackets
-                    daily_att_deaths = p_b * (m_loc / np.exp(c * b_day.data)) * (np.exp(c * b_day.data)- 1)
-                
-                    
-                    output.data[:,j,k] = daily_att_deaths
-        #sum total heat deaths
-        out_sum = output.collapsed('time', iris.analysis.SUM)
-        year_output.append(out_sum)
-        
-    #calculate annual heat deaths
-    year_merge =  year_output.merge_cube()
-    ann_avg_heat_death = year_merge.collapsed('time', iris.analysis.MEAN)
-    
-    return year_merge, ann_avg_heat_death
 
 
 
@@ -244,6 +190,8 @@ def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort):
 #save path    
 path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_1/thres_hismodel/'
 path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_1/thres_hismodel/'
+path_e = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_1/historical/'
+
 
 dec_start = [1995, 2005, 2015]
 pop_list = [pop_2000, pop_2010, pop_2019]
@@ -266,20 +214,21 @@ for i in np.arange(0, len(dec_start)):
     mor = mor_list[i]
 
 
-    for j in np.arange(0, len(tdif_hislist)):
-        cube = tdif_hislist[j]
+    for j in np.arange(0, len(tdif_damiplist)):
+        cube = tdif_damiplist[j]
         
         print(j, tp.gcm(cube))
         
-        ahd_indyear, ahd_mean = ann_death_per_decade(cube, dstart, dec_end, pop_ratio, mor)
+        ahd_indyear, ahd_mean, e  = f.ann_death_per_decade(cube, dstart, dec_end, pop_ratio, mor, coeff)
         
         sim =  ahd_mean.coord('sim').points[0]
         #save data
                 
         save_name = sim  + '_' + tp.gcm(ahd_mean) + '_' + period
 
-        iris.save(ahd_indyear, path_indyears + save_name + '.nc')
-        iris.save(ahd_mean, path + save_name + '.nc')
+        #iris.save(ahd_indyear, path_indyears + save_name + '.nc')
+        #iris.save(ahd_mean, path + save_name + '.nc')
+        iris.save(e, path_e + save_name + '.nc')
 
         print(save_name, 'saved')
 
