@@ -66,7 +66,7 @@ for file in filenames:
 
 tas_years = []
 for cube in tas:
-    x = cube.extract(iris.Constraint(year = lambda cell: 2020 <= cell <= 2100)) 
+    x = cube.extract(iris.Constraint(year = lambda cell: cell <= 2100)) 
     tas_years.append(x)
 
 #%% Import input data 
@@ -77,10 +77,33 @@ pop_2000 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr
     #pop used for last decade of historical
 
 pop_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2010_regrid.nc')
+pop_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/pop/processed/afr_01_mf_2019_regrid.nc')
+
 
 #daily mortality
     #mor used for last decade of historical
 dmor_2010 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2010_regrid.nc')
+dmor_2019 = iris.load_cube('/nfs/a321/earsch/CHAMNHA/input_data/mortality/processed/daily_mor_mf_01_2019_regrid.nc')
+
+
+years = np.arange(2025, 2060, 10)
+pop_path = '/nfs/a321/earsch/CHAMNHA/input_data/pop/future/processed/'
+mor_path = '/nfs/a321/earsch/CHAMNHA/input_data/mortality/future/processed/'
+pop_list = []
+mor_list = []
+
+for y in years:
+    p_name = pop_path + 'ssp2_' + str(y) + '_04population_mf_BIASCORR2.nc'
+    m_name = mor_path + 'ref_' + str(y) + '_04_totalmor_mf_BIASCORR.nc'
+    
+    pop_list.append(iris.load_cube(p_name))
+    mor_list.append(iris.load_cube(m_name))
+
+#%% turn into daily mortlaity
+
+dmor_list = [x/365 for x in mor_list]
+
+
 
 #%% Create coefficient data
 
@@ -100,23 +123,26 @@ path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thre
 path_e = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_061/future/'
 
 
-dec_start = np.arange(2020, 2100, 10)
+dec_start = np.arange(2020, 2060, 10)
 
-for i in np.arange(4, 5):
+dec_start = [2015]
+
+for i in np.arange(0, len(dec_start)):
     dstart = dec_start[i] # dec start and dec end used for subsetting climate data
-    dec_end = dstart + 10  #goes to 2015, but extracted as < not <=, so will be same time period as period 2 of damip historical mods
+    dec_end = dstart + 5  #goes to 2015, but extracted as < not <=, so will be same time period as period 2 of damip historical mods
     period = str(dstart) + str(dec_end - 1)
     
     print(period)
     
     #pop data
-    pop_ratio = pop_2010/pop_2000 #ratio future pop to baseline pop   
+    p = pop_2019
+    pop_ratio = p/pop_2000 #ratio future pop to baseline pop   
     #0 in denominator causing problems
     pop_ratio.data = np.where(pop_2000.data == 0, 1, pop_ratio.data)
     pop_ratio.data = ma.masked_array(pop_ratio.data, mask = pop_2000.data.mask)
 
     #mor data
-    mor = dmor_2010
+    mor = dmor_2019
 
 
     for j in np.arange(0, len(tas_years)):
@@ -134,7 +160,7 @@ for i in np.arange(4, 5):
         sim = ahd_mean.coord('sim').points[0]
         #save data
                 
-        save_name = sim  + '_' + tp.gcm(ahd_mean) + '_' + period + '_' + 'P2010' + '_' + 'M2010'
+        save_name = sim  + '_' + tp.gcm(ahd_mean) + '_' + period + '_' + 'PBC2' + '_' + 'MBC'
 
         iris.save(ahd_indyear, path_indyears + save_name + '.nc')
         iris.save(ahd_mean, path + save_name + '.nc')
