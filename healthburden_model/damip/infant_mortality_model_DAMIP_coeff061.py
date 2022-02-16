@@ -182,12 +182,7 @@ for cube in tas_damip_years:
     tdif = calc_tdif(cube, thres[0])
     tdif_damiplist.append(tdif)
  
-#%% save thres
 
-#path = '/nfs/a321/earsch/CHAMNHA/output/thres_his/'
-#for cube in thres_list:
-#    save_name = 'historical'  + '_' + tp.gcm(cube) + '_' + '1995_2010'
-#    iris.save(cube, path + save_name + '.nc')
 
 #%% calculate attributable death per decade
 
@@ -241,46 +236,92 @@ def ann_death_per_decade(temp, dec_start, dec_end, pop_ratio, davg_mort):
 
 #%% Run model
 
+
+
+def apply_model(dec_list, pop_list, mor_list, cube_list, path, path_indyears, code = ''):
+     
+    for i in np.arange(0, len(dec_list)):
+        dstart = dec_list[i] # dec start and dec end used for subsetting climate data
+        dec_end = dstart + 10  
+        period = str(dstart) + str(dec_end - 1)
+        
+        print(period)
+        
+        #pop data
+        pop_ratio = pop_list[i]/pop_2000 #ratio future pop to baseline pop   
+        #0 in denominator causing problems
+        pop_ratio.data = np.where(pop_2000.data == 0, 1, pop_ratio.data)
+        pop_ratio.data = ma.masked_array(pop_ratio.data, mask = pop_2000.data.mask)
+    
+        #mor data
+        mor = mor_list[i]
+    
+    
+        for j in np.arange(0, len(cube_list)):
+            cube = cube_list[j]
+            
+            print(j, tp.gcm(cube))
+            
+            ahd_indyear, ahd_mean = ann_death_per_decade(cube, dstart, dec_end, pop_ratio, mor)
+            
+            sim =  ahd_mean.coord('sim').points[0]
+            #save data
+                    
+            save_name = sim  + '_' + tp.gcm(ahd_mean) + '_' + period + '_' + code
+    
+            iris.save(ahd_indyear, path_indyears + save_name + '.nc')
+            iris.save(ahd_mean, path + save_name + '.nc')
+    
+            print(save_name, 'saved')
+
+    
+#%%
 #save path    
-path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/'
-path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_hismodel/'
+path = '/nfs/a321/earsch/CHAMNHA/output/annual_avg_mortality/coeff_061/thres_hismodel/decomp_attribution/'
+path_indyears = '/nfs/a321/earsch/CHAMNHA/output/annual_mortality/coeff_061/thres_hismodel/decomp_attribution/'
 
-dec_start = [1995, 2005, 2015]
-pop_list = [pop_2000, pop_2010, pop_2019]
-mor_list = [dmor_2000, dmor_2010, dmor_2019]
+dec_start = [2005, 2015]
+code_list = ['e2p1m1', 'e2p2m1', 'e2p1m2',
+             'e1p1m1', 'e1p2m1', 'e1p1m2']
 
-for i in np.arange(1, len(dec_start)):
-    dstart = dec_start[i] # dec start and dec end used for subsetting climate data
-    dec_end = dstart + 10  
-    period = str(dstart) + str(dec_end - 1)
+#e_list = ['e1', 'e2']
+#p_list = ['p1', 'p2']
+#m_list = ['m1', 'm2']
+
+#for e in e_list:
+#    for p in p_list:
+#        for m in m_list:
+#           print(e, p, m)
+#
+
+list_of_sims = [tdif_hislist, tdif_damiplist]
+
+for i in np.arange(len(code_list)):
+    code = code_list[i]
+    print(i, code)
     
-    print(period)
-    
-    #pop data
-    pop_ratio = pop_list[i]/pop_2000 #ratio future pop to baseline pop   
-    #0 in denominator causing problems
-    pop_ratio.data = np.where(pop_2000.data == 0, 1, pop_ratio.data)
-    pop_ratio.data = ma.masked_array(pop_ratio.data, mask = pop_2000.data.mask)
-
-    #mor data
-    mor = mor_list[i]
-
-
-    for j in np.arange(0, len(tdif_hislist)):
-        cube = tdif_hislist[j]
+    if 'p2' in code:
+        pop_list = [pop_2010, pop_2019]
+        #print('Using p2', np.nanmean(pop_list[0].data), np.nanmean(pop_list[1].data))      
+    if 'p1' in code:
+        pop_list = [pop_2000, pop_2000]
+        #print('Using p1', np.nanmean(pop_list[0].data), np.nanmean(pop_list[1].data))
+               
+    if 'm2' in code:
+        mor_list = [dmor_2010, dmor_2019]
+        #print('Using m2', np.nanmean(mor_list[0].data), np.nanmean(mor_list[1].data))
+    if 'm1' in code:
+        mor_list = [dmor_2000, dmor_2000]
+        #print('Using m1', np.nanmean(mor_list[0].data), np.nanmean(mor_list[1].data))
         
-        print(j, tp.gcm(cube))
+    if 'e2' in code:
+        cube_list = tdif_hislist
+        #print('Using e2', cube_list[0].coord('sim').points[0])
+    if 'e1' in code:
+        cube_list = tdif_damiplist 
+        #print('Using e1', cube_list[0].coord('sim').points[0])
+         
         
-        ahd_indyear, ahd_mean = ann_death_per_decade(cube, dstart, dec_end, pop_ratio, mor)
-        
-        sim =  ahd_mean.coord('sim').points[0]
-        #save data
-                
-        save_name = sim  + '_' + tp.gcm(ahd_mean) + '_' + period
+    apply_model(dec_start, pop_list, mor_list, cube_list, path, path_indyears, code)
 
-        iris.save(ahd_indyear, path_indyears + save_name + '.nc')
-        iris.save(ahd_mean, path + save_name + '.nc')
 
-        print(save_name, 'saved')
-
-    
