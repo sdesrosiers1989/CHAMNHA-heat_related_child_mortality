@@ -1,4 +1,4 @@
-# CHAMNHA Projection: Heat related child mortality
+# CHAMNHA Project: Heat related child mortality
 Scripts for calculating heat-relatated child mortality (HRCM) due to climate change, and changes in population size and total (all-cause mortality), and for decomposing changes in HRCM due to changes in climate, population and all-cause mortality. <br /> 
 
 Children are defined here as under 5, and the scripts and input data are based on that. However, the scripts will work with any age group.
@@ -27,7 +27,7 @@ Note: Prior to starting make sure have downloaded tanzania1.py from 'Plotting fu
    - Bias-correct temperature data using linear-scaling and monthly correction factors, and the CRU temperature dataset as the reference observations
    - Scripts (in bias_corr)
      - tas - sripts are available for CORDEX, CMIP6 and the CP4A and P25 UM models, however the rest of these scripts are based on using the CMIP6 models (though any netcdf file in same format should work)
-4. Preprae input pop/mortality data
+4. Prepare input pop/mortality data
    - Health burden model requires gridded total population, and gridded total annual mortality.
    - Compare different historical population and mortality input datasets (comp_pop_datasets) (OPTIONAL)
    - Scripts (in prepare_popmor_data)
