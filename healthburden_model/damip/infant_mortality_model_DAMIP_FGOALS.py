@@ -14,18 +14,14 @@ Created on Mon Apr 20 11:12:29 2020
 #%%set wd and import packages
 
 import iris
-import iris.quickplot as qplt
 import iris.coord_categorisation
-from iris.experimental.equalise_cubes import equalise_attributes
+from iris.util import equalise_attributes
 from iris.util import unify_time_units
 
 import numpy as np
 import numpy.ma as ma
 
 import math
-
-
-import copy
 
 import glob
 
@@ -63,14 +59,6 @@ for file in filenames:
     x = x.extract(iris.Constraint(year= lambda cell: cell >= 2015))
     tas_245.append(x)
     
-#obs - used to get threshold
-cru_tas = iris.load('/nfs/a321/earsch/Tanga/Data/CRU/tmp/*.nc',
-                    iris.Constraint(cube_func = lambda cube: cube.var_name == 'tmp'))
-
-cru_tas = cru_tas.concatenate_cube()
-iris.coord_categorisation.add_year(cru_tas, 'time')
-cru_tas = cru_tas.extract(iris.Constraint(year= lambda cell: 1995 <= cell <= 2010))
-cru_tas = cru_tas.regrid(tas[0][0], iris.analysis.Linear())
 
 #%% Limit historical and ssp245 models to same models in DAMIP
 
@@ -154,9 +142,7 @@ per_c = 0.805
 c = math.log((per_c/100) + 1)
 coeff = f.place_holder(tas[0][0], c) 
 
-#Threshold
-#thres = cru_tas.collapsed('time', iris.analysis.PERCENTILE, percent = 75)
-#thres.units = 'celsius'
+
 
 #%% calculate temp diff with threshold
 

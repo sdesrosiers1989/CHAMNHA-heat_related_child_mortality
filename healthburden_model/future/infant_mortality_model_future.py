@@ -14,18 +14,12 @@ Created on Mon Apr 20 11:12:29 2020
 #%%set wd and import packages
 
 import iris
-import iris.quickplot as qplt
 import iris.coord_categorisation
-from iris.experimental.equalise_cubes import equalise_attributes
-from iris.util import unify_time_units
 
 import numpy as np
 import numpy.ma as ma
 
 import math
-
-
-import copy
 
 import glob
 
@@ -125,7 +119,7 @@ path_e = '/nfs/a321/earsch/CHAMNHA/output/e/coeff_061/future/'
 
 dec_start = np.arange(2020, 2060, 10)
 
-dec_start = [2015]
+#dec_start = [2015]
 
 for i in np.arange(0, len(dec_start)):
     dstart = dec_start[i] # dec start and dec end used for subsetting climate data

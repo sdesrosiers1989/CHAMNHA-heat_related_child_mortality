@@ -14,9 +14,8 @@ Created on Mon Apr 20 11:12:29 2020
 #%%set wd and import packages
 
 import iris
-import iris.quickplot as qplt
 import iris.coord_categorisation
-from iris.experimental.equalise_cubes import equalise_attributes
+from iris.util import equalise_attributes
 from iris.util import unify_time_units
 
 import numpy as np
@@ -24,8 +23,6 @@ import numpy.ma as ma
 
 import math
 
-
-import copy
 
 import glob
 
@@ -216,8 +213,8 @@ for i in np.arange(0, len(dec_start)):
                 
         save_name = sim  + '_' + tp.gcm(ahd_mean) + '_' + period
 
-        #iris.save(ahd_indyear, path_indyears + save_name + '.nc')
-        #iris.save(ahd_mean, path + save_name + '.nc')
+        iris.save(ahd_indyear, path_indyears + save_name + '.nc')
+        iris.save(ahd_mean, path + save_name + '.nc')
         iris.save(e, path_e + save_name + '.nc')
 
         print(save_name, 'saved')
