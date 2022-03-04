@@ -14,6 +14,9 @@ Children are defined here as under 5, and the scripts and input data are based o
 
 ## Process
 
+Note: Prior to starting make sure have downloaded tanzania1.py from 'Plotting functions' repos </br>
+
+
 1. Prepare temperature (tas) input data
    - Assuming that CMIP6 data already downloaded from ESGF or CEDA, script will concatenate model files into one file per model and scenario, and ensure all on same grid and cover same time frame.
    - Scripts (in CMIP6_temp_prepare):
