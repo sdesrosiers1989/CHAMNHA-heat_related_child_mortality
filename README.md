@@ -48,10 +48,12 @@ Note: Prior to starting make sure have downloaded tanzania1.py from 'Plotting fu
    - Adjusting coefficients: historical model has a separate script for each coefficient, however other scenarios coefficient can be adjusted within the #Coeff section of the script (change file paths accordingly)
    - The scripts take in climate data, as well as the population and mortality data. Population and mortality data available per decade, temperature data daily. The health burden model requires daily all-cause mortality, however as this data was not available annual mortality is simply divided by 365.
    - Outputs are the annual heat related mortality (individual years), and as a mean per decade, and * *e*, which is the fraction of total mortality due to heat, and is required in the decomposition scripts
-   - Scripts (healthburden_model):
-     - historical: 1995 - 2014, historical scenario from CMIP6, and the appropriate population and mortality data. Separate scripts for coeff = 0.61 and 1.0
-     - damip: 1995 - 2020, with 1995 - 2014 being the hist-nat scenario, and 2015 - 2020 being ssp245. Separate file for FGOALs model.
-     - future: 2020 - 2050, using future population and mortality
+   - Scripts:
+     - function: functions/functions.py (all the health burden model scripts call this function)
+     - healthburden_model:
+       - historical: 1995 - 2014, historical scenario from CMIP6, and the appropriate population and mortality data. Separate scripts for coeff = 0.61 and 1.0
+       - damip: 1995 - 2020, with 1995 - 2014 being the hist-nat scenario, and 2015 - 2020 being ssp245. Separate file for FGOALs model.
+       - future: 2020 - 2050, using future population and mortality
 7. Decompose into components
    - Decompose components of change in HRCM into change due to climate change (temperature increases), population (population growth) and all-cause mortality (declining)
    - Based on the method of Das Gupta (1993)
